@@ -1,6 +1,3 @@
-# andreani.py
-# Aquí va la lógica convertida desde andreani.js
-
 import requests
 
 def get_andreani_tracking(tracking_number: str, auth_header: str) -> dict:
@@ -52,4 +49,4 @@ def get_andreani_tracking(tracking_number: str, auth_header: str) -> dict:
         raise
 
 def funcion_andreani():
-    pass  # Implementar lógica de andreani.js aquí 
+    pass

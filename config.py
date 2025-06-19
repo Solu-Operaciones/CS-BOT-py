@@ -37,7 +37,8 @@ MANUAL_DRIVE_FILE_ID = os.getenv('MANUAL_DRIVE_FILE_ID')
 TARGET_CATEGORY_ID = os.getenv('TARGET_CATEGORY_ID')
 
 # Intervalo de verificación de errores (en milisegundos)
-ERROR_CHECK_INTERVAL_MS = int(os.getenv('ERROR_CHECK_INTERVAL_MS', '14400000'))  # 4 horas por defecto
+# 4 horas por defecto
+ERROR_CHECK_INTERVAL_MS = int(os.getenv('ERROR_CHECK_INTERVAL_MS', '14400000'))
 
 # Validaciones básicas
 if not TOKEN:
@@ -58,9 +59,11 @@ if not MANUAL_DRIVE_FILE_ID:
     print("Advertencia: MANUAL_DRIVE_FILE_ID no configurado. El comando del manual no funcionará.")
 
 # Validar intervalo de verificación de errores
-if ERROR_CHECK_INTERVAL_MS < 10000:  # Mínimo 10 segundos
+# Mínimo 10 segundos
+if ERROR_CHECK_INTERVAL_MS < 10000:
     print(f"ERROR_CHECK_INTERVAL_MS configurado incorrectamente o muy bajo. Usando valor por defecto: 300000 ms.")
-    ERROR_CHECK_INTERVAL_MS = 300000  # Reset a 5 minutos si es inválido
+    # Reset a 5 minutos si es inválido
+    ERROR_CHECK_INTERVAL_MS = 300000
 
 # Prefijo para comandos (si usas comandos con prefijo)
 PREFIX = '!'

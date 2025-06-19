@@ -11,10 +11,6 @@ tipo_solicitud_options = [
 ]
 
 def build_tipo_solicitud_select_menu():
-    """
-    Construye un Select Menu de tipo de solicitud para discord.py (v2.0+).
-    :return: discord.ui.ActionRow con el select menu listo para enviar.
-    """
     class TipoSolicitudSelect(discord.ui.Select):
         def __init__(self):
             options = [
@@ -42,7 +38,7 @@ def build_tipo_solicitud_select_menu():
 class SelectMenus(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-    # Aquí puedes agregar comandos o listeners relacionados con select menus
+
 
 
 def setup(bot):

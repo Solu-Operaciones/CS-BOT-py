@@ -1,6 +1,4 @@
 # pyright: reportAttributeAccessIssue=false
-# qa_service.py
-# Aquí va la lógica convertida desde qaService.js
 
 import google.generativeai as genai
 
@@ -37,4 +35,4 @@ async def get_answer_from_manual(manual_text: str, question: str, gemini_api_key
         raise RuntimeError("Hubo un problema al contactar al servicio de IA.")
 
 def funcion_qa_service():
-    pass  # Implementar lógica de qaService.js aquí 
+    pass

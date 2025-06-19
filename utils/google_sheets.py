@@ -1,20 +1,10 @@
-# google_sheets.py
-# Aquí va la lógica convertida desde googleSheets.js
-
 import gspread
 from google.oauth2.service_account import Credentials
 from datetime import datetime
 import pytz
 import discord
 
-# Inicialización de Google Sheets
-
 def initialize_google_sheets(credentials_json: str):
-    """
-    Inicializa la API de Google Sheets usando credenciales de cuenta de servicio.
-    :param credentials_json: Contenido JSON de las credenciales.
-    :return: Instancia de gspread.Client
-    """
     try:
         scopes = [
             'https://www.googleapis.com/auth/spreadsheets',
@@ -30,8 +20,6 @@ def initialize_google_sheets(credentials_json: str):
     except Exception as error:
         print("Error al inicializar Google Sheets:", error)
         raise
-
-# Verificar si un pedido existe
 
 def check_if_pedido_exists(sheet, sheet_range: str, pedido_number: str) -> bool:
     """
@@ -134,4 +122,4 @@ async def check_sheet_for_errors(bot, sheet, sheet_range: str, target_channel_id
         print('Error al leer la hoja de Google Sheets para verificar errores:', error)
 
 def funcion_google_sheets():
-    pass  # Implementar lógica de googleSheets.js aquí 
+    pass 

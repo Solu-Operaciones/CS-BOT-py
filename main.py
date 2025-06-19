@@ -33,15 +33,15 @@ async def on_ready():
         print("Error al inicializar APIs de Google:", error)
         return
 
-    # Cargar el manual en memoria
-    if config.MANUAL_DRIVE_FILE_ID and drive_instance:
-        try:
-            await load_and_cache_manual(drive_instance, config.MANUAL_DRIVE_FILE_ID)
-            print("Manual cargado en memoria.")
-        except Exception as error:
-            print(f"Error al cargar el manual: {error}")
-    else:
-        print("No se cargará el manual porque falta MANUAL_DRIVE_FOLDER_ID o la instancia de Drive no está disponible.")
+    # # Cargar el manual en memoria
+    # if config.MANUAL_DRIVE_FILE_ID and drive_instance:
+    #     try:
+    #         await load_and_cache_manual(drive_instance, config.MANUAL_DRIVE_FILE_ID)
+    #         print("Manual cargado en memoria.")
+    #     except Exception as error:
+    #         print(f"Error al cargar el manual: {error}")
+    # else:
+    #     print("No se cargará el manual porque falta MANUAL_DRIVE_FOLDER_ID o la instancia de Drive no está disponible.")
 
     print("Conectado a Discord.")
     
@@ -125,4 +125,4 @@ async def main():
         return
 
 if __name__ == "__main__":
-    asyncio.run(main()) 
+    asyncio.run(main())

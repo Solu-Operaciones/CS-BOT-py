@@ -1,11 +1,8 @@
-# state_manager.py
-# Aquí va la lógica convertida desde stateManager.js
-
 import json
 from pathlib import Path
 
 # Define una ruta segura al archivo JSON
-DATA_PATH = Path.cwd() / 'pendingData.json'
+DATA_PATH = Path.cwd() / 'temp/pendingData.json'
 
 # Lee y parsea el archivo JSON de datos pendientes
 # Si el archivo no existe, retorna un dict vacío
@@ -47,4 +44,4 @@ def delete_user_state(user_id: str):
         _write_pending_data(all_data)
 
 def funcion_state_manager():
-    pass  # Implementar lógica de stateManager.js aquí 
+    pass

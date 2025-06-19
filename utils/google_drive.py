@@ -1,20 +1,10 @@
-# google_drive.py
-# Aquí va la lógica convertida desde googleDrive.js
-
 from google.oauth2.service_account import Credentials
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseUpload
 import requests
 import io
 
-# Inicialización de Google Drive
-
 def initialize_google_drive(credentials_json: str):
-    """
-    Inicializa la API de Google Drive usando credenciales de cuenta de servicio.
-    :param credentials_json: Contenido JSON de las credenciales.
-    :return: Instancia de googleapiclient.discovery.Resource (servicio de Drive)
-    """
     try:
         scopes = ['https://www.googleapis.com/auth/drive']
         credentials = Credentials.from_service_account_info(
@@ -27,8 +17,6 @@ def initialize_google_drive(credentials_json: str):
     except Exception as error:
         print("Error al inicializar Google Drive:", error)
         raise
-
-# Buscar o crear carpeta en Drive
 
 def find_or_create_drive_folder(drive_service, parent_id: str, folder_name: str) -> str:
     """
@@ -66,8 +54,6 @@ def find_or_create_drive_folder(drive_service, parent_id: str, folder_name: str)
         print(f"Error al buscar o crear la carpeta '{folder_name}' en Drive:", error)
         raise
 
-# Subir archivo a Drive desde una URL
-
 def upload_file_to_drive(drive_service, folder_id: str, attachment) -> dict:
     """
     Descarga un archivo desde una URL y lo sube a Google Drive.
@@ -96,8 +82,6 @@ def upload_file_to_drive(drive_service, folder_id: str, attachment) -> dict:
         print(f"Error al descargar o subir el archivo {getattr(attachment, 'filename', 'desconocido')}:", error)
         raise
 
-# Descargar archivo de Drive
-
 def download_file_from_drive(drive_service, file_id: str) -> bytes:
     """
     Descarga el contenido de un archivo desde Google Drive.
@@ -125,4 +109,4 @@ def download_file_from_drive(drive_service, file_id: str) -> bytes:
         raise
 
 def funcion_google_drive():
-    pass  # Implementar lógica de googleDrive.js aquí 
+    pass

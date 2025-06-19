@@ -193,5 +193,14 @@ class InteractionCommands(commands.Cog):
             print("Error al procesar el comando /manual:", error)
             await interaction.followup.send(f'❌ Hubo un error al procesar tu pregunta. Inténtalo de nuevo más tarde. (Detalles: {error})', ephemeral=True)
 
+    @app_commands.command(name="ping", description="Verifica si el bot está activo")
+    @app_commands.dm_only()
+    async def ping(self, interaction: discord.Interaction):
+        print("El bot está activo")
+        await interaction.response.send_message("✅ El bot está activo.", ephemeral=True)
+
 async def setup(bot):
     await bot.add_cog(InteractionCommands(bot)) 
+
+
+
