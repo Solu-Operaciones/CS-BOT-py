@@ -1,0 +1,17 @@
+# Logs
+logs
+*.log
+.git.zip
+
+# Directorios temporales
+tmp
+temp
+
+myenv/
+
+credenciales/
+.env
+notas.txt
+
+
+__pycache__/
