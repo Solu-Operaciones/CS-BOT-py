@@ -1,6 +1,3 @@
-# manual_processor.py
-# Aquí va la lógica convertida desde manualProcessor.js
-
 import asyncio
 from typing import Optional, Dict, Any
 

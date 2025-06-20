@@ -163,37 +163,39 @@ class InteractionCommands(commands.Cog):
             print('Error general durante la búsqueda de casos en Google Sheets:', error)
             await interaction.followup.send('❌ Hubo un error al realizar la búsqueda de casos. Por favor, inténtalo de nuevo o contacta a un administrador.', ephemeral=False)
 
-    @app_commands.command(name="manual", description="Pregunta al manual de procedimientos (IA)")
-    @app_commands.describe(pregunta="Pregunta para el manual")
-    async def manual(self, interaction: discord.Interaction, pregunta: str):
-        await interaction.response.defer(thinking=True)
+    #TODO: Verificar si se puede usar el manual de procedimientos
+    # @app_commands.command(name="manual", description="Pregunta al manual de procedimientos (IA)")
+    # @app_commands.describe(pregunta="Pregunta para el manual")
+    # async def manual(self, interaction: discord.Interaction, pregunta: str):
+    #     await interaction.response.defer(thinking=True)
         
-        from utils.qa_service import get_answer_from_manual
-        from utils.manual_processor import get_manual_text
+    #     from utils.qa_service import get_answer_from_manual
+    #     from utils.manual_processor import get_manual_text
         
-        # Verificar que el manual esté disponible
-        manual_text = get_manual_text()
-        if not manual_text:
-            await interaction.followup.send('❌ Error: El manual no está cargado. Por favor, avisa a un administrador.', ephemeral=True)
-            return
+    #     # Verificar que el manual esté disponible
+    #     manual_text = get_manual_text()
+    #     if not manual_text:
+    #         await interaction.followup.send('❌ Error: El manual no está cargado. Por favor, avisa a un administrador.', ephemeral=True)
+    #         return
             
-        # Verificar que la API key esté configurada
-        if not config.GEMINI_API_KEY:
-            await interaction.followup.send('❌ Error: La API de Gemini no está configurada.', ephemeral=True)
-            return
+    #     # Verificar que la API key esté configurada
+    #     if not config.GEMINI_API_KEY:
+    #         await interaction.followup.send('❌ Error: La API de Gemini no está configurada.', ephemeral=True)
+    #         return
             
-        try:
-            respuesta = await get_answer_from_manual(manual_text, pregunta, config.GEMINI_API_KEY)
-            respuesta_formateada = f"""
-❓ **Tu pregunta:**\n> {pregunta}\n
-📖 **Respuesta del manual:**\n{respuesta}
-"""
-            await interaction.followup.send(respuesta_formateada, ephemeral=False)
-        except Exception as error:
-            print("Error al procesar el comando /manual:", error)
-            await interaction.followup.send(f'❌ Hubo un error al procesar tu pregunta. Inténtalo de nuevo más tarde. (Detalles: {error})', ephemeral=True)
+    #     try:
+    #         respuesta = await get_answer_from_manual(manual_text, pregunta, config.GEMINI_API_KEY)
+    #         respuesta_formateada = f"""
+    #             ❓ **Tu pregunta:**\n> {pregunta}\n
+    #             📖 **Respuesta del manual:**\n{respuesta}
+    #             """
+    #         await interaction.followup.send(respuesta_formateada, ephemeral=False)
+    #     except Exception as error:
+    #         print("Error al procesar el comando /manual:", error)
+    #         await interaction.followup.send(f'❌ Hubo un error al procesar tu pregunta. Inténtalo de nuevo más tarde. (Detalles: {error})', ephemeral=True)
+    
 
-    @app_commands.command(name="ping", description="Verifica si el bot está activo")
+    @app_commands.command(name="testping", description="Verifica si el bot está activo")
     @app_commands.dm_only()
     async def ping(self, interaction: discord.Interaction):
         print("El bot está activo")

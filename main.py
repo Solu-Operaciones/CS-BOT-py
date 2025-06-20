@@ -5,8 +5,8 @@ import config
 from utils.google_sheets import initialize_google_sheets, check_sheet_for_errors
 from utils.google_drive import initialize_google_drive
 from utils.andreani import get_andreani_tracking
-from utils.qa_service import get_answer_from_manual
-from utils.manual_processor import load_and_cache_manual, get_manual_text
+# from utils.qa_service import get_answer_from_manual
+# from utils.manual_processor import load_and_cache_manual, get_manual_text
 
 # Configuración del bot con intents
 intents = discord.Intents.all()
@@ -104,11 +104,9 @@ async def load_extensions():
             print(f"Error al cargar extension {extension}: {e}")
 
 async def main():
-    """Función principal para inicializar y ejecutar el bot"""
     print("Paso 1: Iniciando bot...")
     print(f"Paso 2: Token de Discord cargado (primeros 5 chars): {config.TOKEN[:5] if config.TOKEN else 'TOKEN NO CARGADO'}...")
     
-    # Verificar que el token esté disponible
     if not config.TOKEN:
         print("Error CRÍTICO: TOKEN no está configurado. No se puede conectar al bot.")
         return

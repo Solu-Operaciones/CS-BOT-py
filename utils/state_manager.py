@@ -2,7 +2,9 @@ import json
 from pathlib import Path
 
 # Define una ruta segura al archivo JSON
-DATA_PATH = Path.cwd() / 'temp/pendingData.json'
+temp_dir = Path.cwd() / 'temp'
+temp_dir.mkdir(parents=True, exist_ok=True)
+DATA_PATH = temp_dir / 'pendingData.json'
 
 # Lee y parsea el archivo JSON de datos pendientes
 # Si el archivo no existe, retorna un dict vacío
