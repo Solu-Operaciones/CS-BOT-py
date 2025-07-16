@@ -1063,7 +1063,9 @@ class IniciarSolicitudesEnviosButton(discord.ui.Button):
             await interaction.response.send_message('Por favor, selecciona el tipo de solicitud de envío:', view=view, ephemeral=True)
         except Exception as e:
             print(f'Error en IniciarSolicitudesEnviosButton: {e}')
-            await interaction.response.send_message('❌ Error al iniciar el flujo. Por favor, inténtalo de nuevo.', ephemeral=True)
+            import traceback
+            traceback.print_exc()
+            await interaction.response.send_message(f'❌ Error al iniciar el flujo: {str(e)}', ephemeral=True)
 
 class TrackingButton(discord.ui.Button):
     def __init__(self):
