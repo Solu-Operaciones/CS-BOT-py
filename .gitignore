@@ -7,10 +7,11 @@ logs
 tmp
 temp
 tests
+credenciales-botCS.json
 
 myenv/
 
-credenciales/
+
 .env
 notas.txt
 
