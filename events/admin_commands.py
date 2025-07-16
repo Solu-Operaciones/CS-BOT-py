@@ -21,11 +21,11 @@ class AdminCommands(commands.Cog):
     async def reset_bot(self, interaction: discord.Interaction, force: bool = False):
         """Comando para reiniciar las conexiones del bot"""
         
-        # Verificar permisos de administrador
-        if not interaction.user.guild_permissions.administrator:
+        # Verificar permisos de administrador o usuario autorizado
+        if not interaction.user.guild_permissions.administrator and str(interaction.user.id) not in config.SETUP_USER_IDS:
             await interaction.response.send_message(
                 '❌ **Acceso denegado**\n\n'
-                'Solo los administradores pueden usar este comando.',
+                'Solo los administradores o usuarios autorizados pueden usar este comando.',
                 ephemeral=True
             )
             return
@@ -179,11 +179,11 @@ class AdminCommands(commands.Cog):
     async def status_command(self, interaction: discord.Interaction):
         """Comando para mostrar el estado del bot"""
         
-        # Verificar permisos de administrador
-        if not interaction.user.guild_permissions.administrator:
+        # Verificar permisos de administrador o usuario autorizado
+        if not interaction.user.guild_permissions.administrator and str(interaction.user.id) not in config.SETUP_USER_IDS:
             await interaction.response.send_message(
                 '❌ **Acceso denegado**\n\n'
-                'Solo los administradores pueden usar este comando.',
+                'Solo los administradores o usuarios autorizados pueden usar este comando.',
                 ephemeral=True
             )
             return
