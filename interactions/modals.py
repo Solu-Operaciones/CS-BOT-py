@@ -670,28 +670,42 @@ class SolicitudEnviosModal(discord.ui.Modal, title='Detalles de la Solicitud de 
             now = datetime.now(tz)
             fecha_hora = now.strftime('%d-%m-%Y %H:%M:%S')
             agente_name = interaction.user.display_name
-            # Construir diccionario de datos a guardar (igual que Reembolsos)
-            datos = {
-                'Número de pedido': pedido,
-                'Fecha': fecha_hora,
-                'Agente carga': agente_name,
-                'CASO ID WISE': numero_caso,
-                'Solicitud': tipo_solicitud,
-                'Dirección/Teléfono/Datos (Gestión Front)': direccion_telefono,
-                'ZECO (ENTREGAR) / ANDRENAI OBLIGATORIO': '',
-                'Referencia (Gestión BACK OFFICE)': '',
-                'Agente Back': 'Nadie',
-                'Observaciones': observaciones,
-                'ERROR': '',
-                'ErrorEnvioCheck': ''
-            }
             
-            # Armar la fila final según el header (igual que Reembolsos)
+            # Armar la fila en el orden esperado según la hoja (igual que CasoModal)
+            row_data = [
+                pedido,                    # A - Número de pedido
+                fecha_hora,                # B - Fecha
+                agente_name,               # C - Agente carga
+                numero_caso,               # D - CASO ID WISE
+                tipo_solicitud,            # E - Solicitud
+                direccion_telefono,        # F - Dirección/Teléfono/Datos (Gestión Front)
+                '',                        # G - ZECO (ENTREGAR) / ANDRENAI OBLIGATORIO
+                '',                        # H - Referencia (Gestión BACK OFFICE)
+                'Nadie',                   # I - Agente Back (se setea abajo si existe)
+                'No',                      # J - Resuelto
+                observaciones,             # K - Observaciones
+                '',                        # L - ERROR
+                ''                         # M - ErrorEnvioCheck
+            ]
+            
+            # Ajustar la cantidad de columnas al header (igual que CasoModal)
             header = rows[0] if rows else []
-            row_data = []
-            for col in header:
-                valor = datos.get(col, '')
-                row_data.append(valor)
+            if len(row_data) < len(header):
+                row_data.extend([''] * (len(header) - len(row_data)))
+            elif len(row_data) > len(header):
+                row_data = row_data[:len(header)]
+            
+            # Buscar columnas especiales por nombre (igual que CasoModal)
+            def normaliza_columna(nombre):
+                if not nombre:
+                    return ''
+                return str(nombre).strip().replace('\u200b', '').replace('\ufeff', '').lower()
+            
+            # Buscar índice de Agente Back si existe
+            idx_agente_back = next((i for i, h in enumerate(header) if 'agente back' in normaliza_columna(h)), None)
+            if idx_agente_back is not None and idx_agente_back < len(row_data):
+                row_data[idx_agente_back] = 'Nadie'
+            
             sheet.append_row(row_data)
             confirmation_message = f"""✅ **Solicitud registrada exitosamente**\n\n📋 **Detalles de la solicitud:**\n• **N° de Pedido:** {pedido}\n• **N° de Caso:** {numero_caso}\n• **Tipo de Solicitud:** {tipo_solicitud}\n• **Agente:** {agente_name}\n• **Fecha:** {fecha_hora}\n• **Dirección y Teléfono:** {direccion_telefono}\n"""
             if observaciones:
