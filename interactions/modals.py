@@ -678,39 +678,19 @@ class SolicitudEnviosModal(discord.ui.Modal, title='Detalles de la Solicitud de 
             
             # Función para normalizar nombres de columnas
             def normaliza_columna(nombre):
-                return str(nombre).strip().replace(' ', '').replace('/', '').replace('-', '').lower()
+                if not nombre:
+                    return ''
+                return str(nombre).strip().replace('\u200b', '').replace('\ufeff', '').lower()
             
-            # Buscar índices de columnas por nombre
-            idx_pedido = None
-            idx_fecha = None
-            idx_agente = None
-            idx_caso = None
-            idx_tipo = None
-            idx_direccion = None
-            idx_agente_back = None
-            idx_resuelto = None
-            idx_observaciones = None
-            
-            for idx, col_name in enumerate(header):
-                norm = normaliza_columna(col_name)
-                if norm in ['númerodepedido', 'pedido', 'numero']:
-                    idx_pedido = idx
-                elif norm in ['fecha', 'fechahora']:
-                    idx_fecha = idx
-                elif norm in ['agente', 'agente(front)', 'agentequecarga']:
-                    idx_agente = idx
-                elif norm in ['casoidwise', 'idwise', 'caso', 'numerocaso']:
-                    idx_caso = idx
-                elif norm in ['solicitud', 'tiposolicitud', 'tipodesolicitud']:
-                    idx_tipo = idx
-                elif norm in ['direcciónteléfonodatos', 'direccióndatos', 'direcciontelefonodatos', 'direcciondatos']:
-                    idx_direccion = idx
-                elif norm in ['agenteback', 'agente(back)', 'agente(back/tl)']:
-                    idx_agente_back = idx
-                elif norm in ['resuelto', 'resuelto?']:
-                    idx_resuelto = idx
-                elif norm in ['observaciones', 'observaciónadicional']:
-                    idx_observaciones = idx
+            # Buscar índices de columnas por nombre exacto
+            idx_pedido = next((i for i, h in enumerate(header) if normaliza_columna(h) == 'número de pedido'), None)
+            idx_fecha = next((i for i, h in enumerate(header) if normaliza_columna(h) == 'fecha'), None)
+            idx_agente = next((i for i, h in enumerate(header) if normaliza_columna(h) == 'agente carga'), None)
+            idx_caso = next((i for i, h in enumerate(header) if normaliza_columna(h) == 'caso id wise'), None)
+            idx_tipo = next((i for i, h in enumerate(header) if normaliza_columna(h) == 'solicitud'), None)
+            idx_direccion = next((i for i, h in enumerate(header) if normaliza_columna(h) == 'dirección/teléfono/datos (gestión front)'), None)
+            idx_agente_back = next((i for i, h in enumerate(header) if normaliza_columna(h) == 'agente back'), None)
+            idx_observaciones = next((i for i, h in enumerate(header) if normaliza_columna(h) == 'observaciones'), None)
             
             # Llenar los datos en las posiciones correctas
             if idx_pedido is not None:
@@ -727,8 +707,6 @@ class SolicitudEnviosModal(discord.ui.Modal, title='Detalles de la Solicitud de 
                 row_data[idx_direccion] = direccion_telefono
             if idx_agente_back is not None:
                 row_data[idx_agente_back] = 'Nadie'
-            if idx_resuelto is not None:
-                row_data[idx_resuelto] = 'No'
             if idx_observaciones is not None:
                 row_data[idx_observaciones] = observaciones
             sheet.append_row(row_data)
