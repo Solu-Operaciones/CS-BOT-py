@@ -179,13 +179,32 @@ class AttachmentHandler(commands.Cog):
                 
                 # Subir cada adjunto
                 uploaded_files = []
+                debug_message = ""
+                
+                # Mostrar información de debug si está disponible
+                import config
+                if hasattr(config, 'last_debug_info') and config.last_debug_info:
+                    debug_message = f"{config.last_debug_info}\n\n"
+                    config.last_debug_info = ""  # Limpiar después de mostrar
+                
                 for attachment in message.attachments:
-                    uploaded = upload_file_to_drive(drive_service, folder_id, attachment)
-                    uploaded_files.append(uploaded)
+                    try:
+                        uploaded = upload_file_to_drive(drive_service, folder_id, attachment)
+                        uploaded_files.append(uploaded)
+                    except Exception as upload_error:
+                        # Mostrar error detallado en Discord
+                        error_details = f"❌ **Error al subir {attachment.filename}:**\n{str(upload_error)}"
+                        await message.reply(f"{debug_message}{error_details}")
+                        return
                 
                 # Confirmar al usuario
                 file_names = ', '.join([f["name"] for f in uploaded_files])
-                await message.reply(f'✅ Archivos subidos a Google Drive para el pedido {pedido}: {file_names}')
+                success_message = f'✅ **Archivos subidos exitosamente**\n\n📁 **Pedido:** {pedido}\n📎 **Archivos:** {file_names}'
+                
+                if debug_message:
+                    await message.reply(f"{debug_message}{success_message}")
+                else:
+                    await message.reply(success_message)
                 
                 # Buscar información del caso en Google Sheets para crear el embed
                 if not config.GOOGLE_CREDENTIALS_JSON or not config.SPREADSHEET_ID_FAC_A:

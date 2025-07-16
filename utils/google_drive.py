@@ -73,10 +73,44 @@ def upload_file_to_drive(drive_service, folder_id: str, attachment) -> dict:
     if not drive_service or not folder_id or not attachment or not getattr(attachment, 'url', None) or not getattr(attachment, 'filename', None):
         raise ValueError("upload_file_to_drive: Parámetros incompletos.")
     try:
+        # Verificar que la carpeta existe y tenemos permisos
+        try:
+            folder_info = drive_service.files().get(fileId=folder_id, fields='id,name,permissions').execute()
+            folder_name = folder_info.get('name', 'Sin nombre')
+            permissions = folder_info.get('permissions', [])
+            
+            # Crear mensaje de debug para mostrar en Discord
+            debug_info = f"🔍 **DEBUG - Información de carpeta:**\n"
+            debug_info += f"📁 **Carpeta:** {folder_name} (ID: {folder_id})\n"
+            debug_info += f"👥 **Permisos:** {len(permissions)} encontrados\n"
+            
+            for perm in permissions:
+                email = perm.get('emailAddress', 'Sin email')
+                role = perm.get('role', 'Sin rol')
+                debug_info += f"   • {email}: {role}\n"
+            
+            # Guardar debug_info para que se pueda mostrar en Discord
+            import config
+            if not hasattr(config, 'last_debug_info'):
+                config.last_debug_info = ""
+            config.last_debug_info = debug_info
+                
+        except Exception as folder_error:
+            error_msg = f"❌ **Error verificando carpeta:** {folder_error}"
+            import config
+            if not hasattr(config, 'last_debug_info'):
+                config.last_debug_info = ""
+            config.last_debug_info = error_msg
+            raise Exception(f"No se puede acceder a la carpeta {folder_id}: {folder_error}")
+        
         print(f"Intentando descargar archivo: {attachment.filename} desde {attachment.url}")
         file_response = requests.get(attachment.url, stream=True)
         if not file_response.ok:
             raise Exception(f"Error al descargar el archivo {attachment.filename}: HTTP status {file_response.status_code}, {file_response.reason}")
+        
+        file_size = len(file_response.content)
+        print(f"Tamaño del archivo: {file_size} bytes")
+        
         file_metadata = {
             'name': attachment.filename,
             'parents': [folder_id],
