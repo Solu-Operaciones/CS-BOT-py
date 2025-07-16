@@ -670,45 +670,40 @@ class SolicitudEnviosModal(discord.ui.Modal, title='Detalles de la Solicitud de 
             now = datetime.now(tz)
             fecha_hora = now.strftime('%d-%m-%Y %H:%M:%S')
             agente_name = interaction.user.display_name
-            # Construir la fila según el header
+            # Armar la fila en el orden esperado según la hoja
+            row_data = [
+                pedido,                    # Número de pedido
+                fecha_hora,                # Fecha
+                agente_name,               # Agente carga
+                numero_caso,               # CASO ID WISE
+                tipo_solicitud,            # Solicitud
+                direccion_telefono,        # Dirección/Teléfono/Datos (Gestión Front)
+                '',                        # ZECO (ENTREGAR) / ANDRENAI OBLIGATORIO
+                '',                        # Referencia (Gestión BACK OFFICE)
+                '',                        # Agente Back (se setea abajo si existe)
+                observaciones,             # Observaciones
+                '',                        # ERROR
+                ''                         # ErrorEnvioCheck
+            ]
+            
+            # Ajustar la cantidad de columnas al header real de la hoja
             header = rows[0] if rows else []
+            if len(row_data) < len(header):
+                row_data += [''] * (len(header) - len(row_data))
+            elif len(row_data) > len(header):
+                row_data = row_data[:len(header)]
             
-            # Crear una fila vacía con la longitud del header
-            row_data = [''] * len(header)
-            
-            # Función para normalizar nombres de columnas
+            # Buscar por nombre la columna "Agente Back" y setear "Nadie" si existe
             def normaliza_columna(nombre):
-                if not nombre:
-                    return ''
-                return str(nombre).strip().replace('\u200b', '').replace('\ufeff', '').lower()
+                return str(nombre).strip().replace(' ', '').replace('/', '').replace('-', '').lower()
             
-            # Buscar índices de columnas por nombre exacto
-            idx_pedido = next((i for i, h in enumerate(header) if normaliza_columna(h) == 'número de pedido'), None)
-            idx_fecha = next((i for i, h in enumerate(header) if normaliza_columna(h) == 'fecha'), None)
-            idx_agente = next((i for i, h in enumerate(header) if normaliza_columna(h) == 'agente carga'), None)
-            idx_caso = next((i for i, h in enumerate(header) if normaliza_columna(h) == 'caso id wise'), None)
-            idx_tipo = next((i for i, h in enumerate(header) if normaliza_columna(h) == 'solicitud'), None)
-            idx_direccion = next((i for i, h in enumerate(header) if normaliza_columna(h) == 'dirección/teléfono/datos (gestión front)'), None)
-            idx_agente_back = next((i for i, h in enumerate(header) if normaliza_columna(h) == 'agente back'), None)
-            idx_observaciones = next((i for i, h in enumerate(header) if normaliza_columna(h) == 'observaciones'), None)
-            
-            # Llenar los datos en las posiciones correctas
-            if idx_pedido is not None:
-                row_data[idx_pedido] = pedido
-            if idx_fecha is not None:
-                row_data[idx_fecha] = fecha_hora
-            if idx_agente is not None:
-                row_data[idx_agente] = agente_name
-            if idx_caso is not None:
-                row_data[idx_caso] = numero_caso
-            if idx_tipo is not None:
-                row_data[idx_tipo] = tipo_solicitud
-            if idx_direccion is not None:
-                row_data[idx_direccion] = direccion_telefono
+            idx_agente_back = None
+            for idx, col_name in enumerate(header):
+                if normaliza_columna(col_name) == normaliza_columna('Agente Back'):
+                    idx_agente_back = idx
+                    break
             if idx_agente_back is not None:
                 row_data[idx_agente_back] = 'Nadie'
-            if idx_observaciones is not None:
-                row_data[idx_observaciones] = observaciones
             sheet.append_row(row_data)
             confirmation_message = f"""✅ **Solicitud registrada exitosamente**\n\n📋 **Detalles de la solicitud:**\n• **N° de Pedido:** {pedido}\n• **N° de Caso:** {numero_caso}\n• **Tipo de Solicitud:** {tipo_solicitud}\n• **Agente:** {agente_name}\n• **Fecha:** {fecha_hora}\n• **Dirección y Teléfono:** {direccion_telefono}\n"""
             if observaciones:
