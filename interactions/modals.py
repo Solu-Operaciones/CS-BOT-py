@@ -672,39 +672,65 @@ class SolicitudEnviosModal(discord.ui.Modal, title='Detalles de la Solicitud de 
             agente_name = interaction.user.display_name
             # Construir la fila según el header
             header = rows[0] if rows else []
-            row_data = [
-                pedido,           # A - Número de Pedido
-                fecha_hora,       # B - Fecha
-                agente_name,      # C - Agente
-                numero_caso,      # D - Número de Caso
-                tipo_solicitud,   # E - Tipo de Solicitud
-                direccion_telefono, # F - Dirección/Teléfono/Datos
-                '',               # G - Referencia (Back Office)
-                '',               # H - Referencia (Back Office)
-                'Nadie',          # I - Agente Back
-                'No',             # J - Resuelto
-                observaciones     # K - Observaciones
-            ]
-            # Ajustar la cantidad de columnas al header
-            if len(row_data) < len(header):
-                row_data += [''] * (len(header) - len(row_data))
-            elif len(row_data) > len(header):
-                row_data = row_data[:len(header)]
-            # Cargar valores por defecto en las columnas especiales
+            
+            # Crear una fila vacía con la longitud del header
+            row_data = [''] * len(header)
+            
+            # Función para normalizar nombres de columnas
             def normaliza_columna(nombre):
                 return str(nombre).strip().replace(' ', '').replace('/', '').replace('-', '').lower()
+            
+            # Buscar índices de columnas por nombre
+            idx_pedido = None
+            idx_fecha = None
+            idx_agente = None
+            idx_caso = None
+            idx_tipo = None
+            idx_direccion = None
             idx_agente_back = None
             idx_resuelto = None
+            idx_observaciones = None
+            
             for idx, col_name in enumerate(header):
                 norm = normaliza_columna(col_name)
-                if norm == normaliza_columna('Agente Back'):
+                if norm in ['númerodepedido', 'pedido', 'numero']:
+                    idx_pedido = idx
+                elif norm in ['fecha', 'fechahora']:
+                    idx_fecha = idx
+                elif norm in ['agente', 'agente(front)', 'agentequecarga']:
+                    idx_agente = idx
+                elif norm in ['casoidwise', 'idwise', 'caso', 'numerocaso']:
+                    idx_caso = idx
+                elif norm in ['solicitud', 'tiposolicitud', 'tipodesolicitud']:
+                    idx_tipo = idx
+                elif norm in ['direcciónteléfonodatos', 'direccióndatos', 'direcciontelefonodatos', 'direcciondatos']:
+                    idx_direccion = idx
+                elif norm in ['agenteback', 'agente(back)', 'agente(back/tl)']:
                     idx_agente_back = idx
-                if norm == normaliza_columna('Resuelto'):
+                elif norm in ['resuelto', 'resuelto?']:
                     idx_resuelto = idx
+                elif norm in ['observaciones', 'observaciónadicional']:
+                    idx_observaciones = idx
+            
+            # Llenar los datos en las posiciones correctas
+            if idx_pedido is not None:
+                row_data[idx_pedido] = pedido
+            if idx_fecha is not None:
+                row_data[idx_fecha] = fecha_hora
+            if idx_agente is not None:
+                row_data[idx_agente] = agente_name
+            if idx_caso is not None:
+                row_data[idx_caso] = numero_caso
+            if idx_tipo is not None:
+                row_data[idx_tipo] = tipo_solicitud
+            if idx_direccion is not None:
+                row_data[idx_direccion] = direccion_telefono
             if idx_agente_back is not None:
                 row_data[idx_agente_back] = 'Nadie'
             if idx_resuelto is not None:
                 row_data[idx_resuelto] = 'No'
+            if idx_observaciones is not None:
+                row_data[idx_observaciones] = observaciones
             sheet.append_row(row_data)
             confirmation_message = f"""✅ **Solicitud registrada exitosamente**\n\n📋 **Detalles de la solicitud:**\n• **N° de Pedido:** {pedido}\n• **N° de Caso:** {numero_caso}\n• **Tipo de Solicitud:** {tipo_solicitud}\n• **Agente:** {agente_name}\n• **Fecha:** {fecha_hora}\n• **Dirección y Teléfono:** {direccion_telefono}\n"""
             if observaciones:
