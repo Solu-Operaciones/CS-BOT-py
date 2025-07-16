@@ -62,7 +62,7 @@ else:
         print("Error CRÍTICO leyendo fichero de credenciales:", e)
         sys.exit(1)
 
-SPREADSHEET_ID_FAC_A = os.getenv('GOOGLE_SHEET_ID_FAC_A')
+SPREADSHEET_ID_FAC_A = 1E2NMgo2V2lB2JPafV5rcpIyj9Xb9Q-NJJlYLY-fzysE
 SHEET_RANGE_FAC_A = os.getenv("GOOGLE_SHEET_RANGE_FAC_A")
 SPREADSHEET_ID_CASOS = os.getenv("GOOGLE_SHEET_ID_CASOS")
 SHEET_RANGE_CASOS = os.getenv('GOOGLE_SHEET_RANGE_CASOS')
