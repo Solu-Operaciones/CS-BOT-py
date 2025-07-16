@@ -213,17 +213,12 @@ class TaskSelectMenu(discord.ui.Select):
         if self.values[0] == 'Otra':
             await interaction.response.send_modal(TaskObservacionesModal())
         else:
-            await interaction.response.defer()
             seleccion = self.values[0]
-            msg_tarea = await interaction.channel.send(
+            await interaction.response.send_message(
                 f'Tarea seleccionada: **{seleccion}**\nPresiona "Comenzar" para iniciar.',
-                view=TaskStartButtonView(seleccion)
+                view=TaskStartButtonView(seleccion),
+                ephemeral=True
             )
-            await asyncio.sleep(120)
-            try:
-                await msg_tarea.delete()
-            except:
-                pass
 
 class TaskSelectMenuView(discord.ui.View):
     def __init__(self):
