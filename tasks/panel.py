@@ -114,7 +114,6 @@ class TaskPanel(commands.Cog):
         print('[DEBUG] Ejecutando /prueba')
         await interaction.response.send_message('¡Funciona el comando de prueba!', ephemeral=True)
 
-    @app_commands.guilds(discord.Object(id=int(config.GUILD_ID)))
     @app_commands.command(name='verificar_tareas_sheet', description='Verifica y crea las hojas necesarias para tareas (admins y usuarios autorizados)')
     async def verificar_tareas_sheet(self, interaction: discord.Interaction):
         # Verificar permisos (admins o usuarios autorizados)
@@ -252,6 +251,19 @@ class TaskStartButton(discord.ui.Button):
             
             await interaction.followup.send(f'🔄 Abriendo spreadsheet...', ephemeral=True)
             spreadsheet = client.open_by_key(config.GOOGLE_SHEET_ID_TAREAS)
+            
+            # Verificar qué hojas existen
+            await interaction.followup.send(f'🔄 Verificando hojas existentes...', ephemeral=True)
+            hojas_existentes = [worksheet.title for worksheet in spreadsheet.worksheets()]
+            await interaction.followup.send(f'📋 **Hojas disponibles:** {", ".join(hojas_existentes)}', ephemeral=True)
+            
+            # Verificar si existen las hojas requeridas
+            if 'Tareas Activas' not in hojas_existentes:
+                await interaction.followup.send(f'❌ **Error:** No existe la hoja "Tareas Activas"', ephemeral=True)
+                return
+            if 'Historial' not in hojas_existentes:
+                await interaction.followup.send(f'❌ **Error:** No existe la hoja "Historial"', ephemeral=True)
+                return
             
             await interaction.followup.send(f'🔄 Obteniendo hojas...', ephemeral=True)
             sheet_activas = spreadsheet.worksheet('Tareas Activas')
