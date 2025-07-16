@@ -1324,7 +1324,7 @@ class PiezaFaltanteButton(discord.ui.Button):
                 if canal:
                     await interaction.response.defer()
                     msg_panel = await interaction.followup.send(f'✅ Revisa el canal <#{canal_id}> para continuar el flujo.')
-                    msg = await canal.send(f'🧩 {interaction.user.mention}, haz clic en el botón para registrar una pieza faltante:', view=IniciarPiezaFaltanteView(interaction.user.id))
+                    msg = await canal.send(f'🧩 {interaction.user.mention}, haz clic en el botón para registrar una pieza faltante, no te olvides de antes llenar el formulario: https://forms.office.com/pages/responsepage.aspx?id=cm15Q6kOD060d7nTy0qsWd37Phzx2QlOgQ9NVyvXFPZUOUVFWlNaQzdTQkNFVlBHTTJSREUxWlRYUi4u&route=shorturl:', view=IniciarPiezaFaltanteView(interaction.user.id))
                     await asyncio.sleep(20)
                     try:
                         await msg_panel.delete()
