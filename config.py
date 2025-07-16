@@ -8,6 +8,10 @@ load_dotenv()
 TOKEN = os.getenv('DISCORD_TOKEN')
 GUILD_ID = os.getenv('GUILD_ID')
 
+# Configuración de permisos para comandos de setup
+# IDs de usuarios que pueden usar comandos de setup (además de administradores)
+SETUP_USER_IDS = ['1297896768523993120']
+
 # IDs de canales específicos
 HELP_CHANNEL_ID = 1385252411483885660
 TARGET_CHANNEL_ID_FAC_A = 1385252485933039626

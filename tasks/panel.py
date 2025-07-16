@@ -54,18 +54,38 @@ def guilds_decorator():
         return app_commands.guilds(discord.Object(id=guild_id))
     return lambda x: x
 
+def check_setup_permissions(interaction: discord.Interaction) -> bool:
+    """
+    Verifica si el usuario tiene permisos para usar comandos de setup.
+    Permite a administradores y usuarios específicos por ID.
+    """
+    # Verificar que el usuario sea un Member
+    if not isinstance(interaction.user, discord.Member):
+        return False
+    
+    # Administradores siempre pueden usar estos comandos
+    if interaction.user.guild_permissions.administrator:
+        return True
+    
+    # Verificar si el usuario está en la lista de IDs permitidos
+    setup_user_ids = getattr(config, 'SETUP_USER_IDS', [])
+    if setup_user_ids and str(interaction.user.id) in setup_user_ids:
+        return True
+    
+    return False
+
 class TaskPanel(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         print('[DEBUG] TaskPanel Cog inicializado')
 
     @app_commands.guilds(discord.Object(id=int(config.GUILD_ID)))
-    @app_commands.command(name='setup_panel_tareas', description='Publica el panel de tareas en el canal configurado (solo admins)')
+    @app_commands.command(name='setup_panel_tareas', description='Publica el panel de tareas en el canal configurado (admins y usuarios autorizados)')
     async def setup_panel_tareas(self, interaction: discord.Interaction):
         print('[DEBUG] Ejecutando /setup_panel_tareas')
-        # Solo admins pueden ejecutar
-        if not interaction.user.guild_permissions.administrator:
-            await interaction.response.send_message('No tienes permisos para usar este comando.', ephemeral=True)
+        # Verificar permisos (admins o usuarios autorizados)
+        if not check_setup_permissions(interaction):
+            await interaction.response.send_message('No tienes permisos para usar este comando. Se requieren permisos de administrador o estar autorizado.', ephemeral=True)
             return
         
         # Obtener el canal de tareas desde la configuración
@@ -1241,10 +1261,11 @@ class PanelComandos(commands.Cog):
         self.bot = bot
 
     @app_commands.guilds(discord.Object(id=int(config.GUILD_ID)))
-    @app_commands.command(name='setup_panel_comandos', description='Publica el panel de comandos en el canal de guía (solo admins)')
+    @app_commands.command(name='setup_panel_comandos', description='Publica el panel de comandos en el canal de guía (admins y usuarios autorizados)')
     async def setup_panel_comandos(self, interaction: discord.Interaction):
-        if not interaction.user.guild_permissions.administrator:
-            await interaction.response.send_message('No tienes permisos para usar este comando.', ephemeral=True)
+        # Verificar permisos (admins o usuarios autorizados)
+        if not check_setup_permissions(interaction):
+            await interaction.response.send_message('No tienes permisos para usar este comando. Se requieren permisos de administrador o estar autorizado.', ephemeral=True)
             return
         # Canal de guía
         canal_id = getattr(config, 'TARGET_CHANNEL_ID_GUIA_COMANDOS', None)
