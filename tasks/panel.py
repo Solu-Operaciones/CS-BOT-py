@@ -114,6 +114,67 @@ class TaskPanel(commands.Cog):
         print('[DEBUG] Ejecutando /prueba')
         await interaction.response.send_message('¡Funciona el comando de prueba!', ephemeral=True)
 
+    @app_commands.guilds(discord.Object(id=int(config.GUILD_ID)))
+    @app_commands.command(name='verificar_tareas_sheet', description='Verifica y crea las hojas necesarias para tareas (admins y usuarios autorizados)')
+    async def verificar_tareas_sheet(self, interaction: discord.Interaction):
+        # Verificar permisos (admins o usuarios autorizados)
+        if not check_setup_permissions(interaction):
+            await interaction.response.send_message('No tienes permisos para usar este comando. Se requieren permisos de administrador o estar autorizado.', ephemeral=True)
+            return
+        
+        await interaction.response.defer()
+        
+        try:
+            # Inicializar Google Sheets
+            await interaction.followup.send('🔄 Inicializando Google Sheets...', ephemeral=True)
+            client = google_sheets.initialize_google_sheets(config.GOOGLE_CREDENTIALS_JSON)
+            
+            # Abrir spreadsheet
+            await interaction.followup.send('🔄 Abriendo spreadsheet...', ephemeral=True)
+            spreadsheet = client.open_by_key(config.GOOGLE_SHEET_ID_TAREAS)
+            
+            # Obtener lista de hojas existentes
+            await interaction.followup.send('🔄 Verificando hojas existentes...', ephemeral=True)
+            hojas_existentes = [worksheet.title for worksheet in spreadsheet.worksheets()]
+            
+            await interaction.followup.send(f'📋 **Hojas existentes:**\n{", ".join(hojas_existentes)}', ephemeral=True)
+            
+            # Verificar si faltan hojas
+            hojas_requeridas = ['Tareas Activas', 'Historial']
+            hojas_faltantes = [hoja for hoja in hojas_requeridas if hoja not in hojas_existentes]
+            
+            if hojas_faltantes:
+                await interaction.followup.send(f'⚠️ **Hojas faltantes:** {", ".join(hojas_faltantes)}', ephemeral=True)
+                
+                # Crear hojas faltantes
+                for hoja in hojas_faltantes:
+                    await interaction.followup.send(f'🔄 Creando hoja "{hoja}"...', ephemeral=True)
+                    nueva_hoja = spreadsheet.add_worksheet(title=hoja, rows=1000, cols=20)
+                    
+                    # Agregar headers según el tipo de hoja
+                    if hoja == 'Tareas Activas':
+                        nueva_hoja.append_row(google_sheets.COLUMNAS_TAREAS_ACTIVAS)
+                    elif hoja == 'Historial':
+                        nueva_hoja.append_row(google_sheets.COLUMNAS_HISTORIAL)
+                
+                await interaction.followup.send('✅ **¡Hojas creadas exitosamente!**\n\nAhora puedes usar el panel de tareas.', ephemeral=True)
+            else:
+                await interaction.followup.send('✅ **Todas las hojas requeridas ya existen.**\n\nEl problema puede ser de permisos o estructura de datos.', ephemeral=True)
+                
+        except Exception as e:
+            error_msg = f'❌ **Error al verificar spreadsheet:**\n\n'
+            if "404" in str(e) or "not found" in str(e).lower():
+                error_msg += f'**Problema:** El spreadsheet no existe.\n\n'
+                error_msg += f'**ID del spreadsheet:** `{config.GOOGLE_SHEET_ID_TAREAS}`\n\n'
+                error_msg += f'**Solución:** Crea un nuevo spreadsheet y actualiza el ID en config.py'
+            elif "403" in str(e) or "permission" in str(e).lower():
+                error_msg += f'**Problema:** Error de permisos en Google Sheets.\n\n'
+                error_msg += f'**Error completo:** {str(e)}'
+            else:
+                error_msg += f'**Error completo:** {str(e)}'
+            
+            await interaction.followup.send(error_msg, ephemeral=True)
+
 class TaskPanelView(discord.ui.View):
     def __init__(self):
         super().__init__(timeout=None)
