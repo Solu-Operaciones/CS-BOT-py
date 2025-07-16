@@ -1,0 +1,306 @@
+import discord
+from discord.ext import commands
+from utils.state_manager import get_user_state, delete_user_state, cleanup_expired_states
+from utils.google_drive import initialize_google_drive, find_or_create_drive_folder, upload_file_to_drive
+import config
+from datetime import datetime
+import pytz
+
+class SolicitudCargadaButton(discord.ui.Button):
+    def __init__(self, pedido, caso, agente, fecha_carga, message_id):
+        super().__init__(
+            label='Solicitud cargada',
+            style=discord.ButtonStyle.success,
+            custom_id=f'solicitud_cargada_{pedido}_{message_id}'
+        )
+        self.pedido = pedido
+        self.caso = caso
+        self.agente = agente
+        self.fecha_carga = fecha_carga
+        self.message_id = message_id
+
+    async def callback(self, interaction: discord.Interaction):
+        # Verificar si el usuario tiene el rol "Bgh Back Office" o es Ezequiel Arraygada
+        has_role = False
+        user_name = interaction.user.display_name
+        
+        # Verificar rol "Bgh Back Office" - solo funciona en contexto de guild
+        if interaction.guild:
+            member = interaction.guild.get_member(interaction.user.id)
+            if member:
+                for role in member.roles:
+                    if role.name == "Bgh Back Office":
+                        has_role = True
+                        break
+        
+        # Verificar si es Ezequiel Arraygada
+        if user_name == "Ezequiel Arraygada":
+            has_role = True
+        
+        if not has_role:
+            await interaction.response.send_message('❌ Solo los agentes de Back Office pueden marcar solicitudes como cargadas.', ephemeral=True)
+            return
+        
+        try:
+            # Verificar credenciales antes de usar
+            if not config.GOOGLE_CREDENTIALS_JSON or not config.SPREADSHEET_ID_FAC_A:
+                await interaction.response.send_message('❌ Error de configuración: Credenciales de Google no configuradas.', ephemeral=True)
+                return
+            
+            # Actualizar Google Sheets
+            import utils.google_sheets as google_sheets
+            client = google_sheets.initialize_google_sheets(config.GOOGLE_CREDENTIALS_JSON)
+            spreadsheet = client.open_by_key(config.SPREADSHEET_ID_FAC_A)
+            sheet_range = getattr(config, 'SHEET_RANGE_FAC_A', 'A:E')
+            
+            # Determinar la hoja
+            hoja_nombre = None
+            if '!' in sheet_range:
+                partes = sheet_range.split('!')
+                if len(partes) == 2:
+                    hoja_nombre = partes[0].strip("'")
+                    sheet_range_puro = partes[1]
+                else:
+                    hoja_nombre = None
+                    sheet_range_puro = sheet_range
+            else:
+                sheet_range_puro = sheet_range
+            
+            if hoja_nombre:
+                sheet = spreadsheet.worksheet(hoja_nombre)
+            else:
+                sheet = spreadsheet.sheet1
+            
+            # Buscar la fila del pedido
+            rows = sheet.get(sheet_range_puro)
+            if not rows or len(rows) <= 1:
+                await interaction.response.send_message('❌ No se encontró la solicitud en Google Sheets.', ephemeral=True)
+                return
+            
+            header_row = rows[0]
+            pedido_col = google_sheets.get_col_index(header_row, 'Número de Pedido')
+            check_bo_col = google_sheets.get_col_index(header_row, 'Check BO Carga')
+            
+            if pedido_col is None:
+                await interaction.response.send_message('❌ No se encontró la columna "Número de Pedido" en la hoja.', ephemeral=True)
+                return
+            
+            if check_bo_col is None:
+                await interaction.response.send_message('❌ No se encontró la columna "Check BO Carga" en la hoja.', ephemeral=True)
+                return
+            
+            # Buscar la fila del pedido
+            pedido_found = False
+            for i, row in enumerate(rows[1:], start=2):
+                if len(row) > pedido_col and str(row[pedido_col]).strip() == self.pedido:
+                    # Actualizar la columna Check BO Carga
+                    tz = pytz.timezone('America/Argentina/Buenos_Aires')
+                    now = datetime.now(tz)
+                    fecha_hora = now.strftime('%d-%m-%Y %H:%M:%S')
+                    sheet.update_cell(i, check_bo_col + 1, fecha_hora)
+                    pedido_found = True
+                    break
+            
+            if not pedido_found:
+                await interaction.response.send_message('❌ No se encontró el pedido en Google Sheets.', ephemeral=True)
+                return
+            
+            # Actualizar el botón
+            self.label = '✅ Solicitud cargada'
+            self.style = discord.ButtonStyle.secondary
+            self.disabled = True
+            
+            # Actualizar el embed
+            if interaction.message.embeds:
+                embed = interaction.message.embeds[0]
+                embed.color = discord.Color.green()
+                embed.add_field(
+                    name='✅ Estado',
+                    value=f'Marcado como cargado por {user_name}',
+                    inline=False
+                )
+                
+                await interaction.response.edit_message(embed=embed, view=self.view)
+            else:
+                await interaction.response.edit_message(view=self.view)
+            
+        except Exception as error:
+            print(f'Error al marcar solicitud como cargada: {error}')
+            await interaction.response.send_message(f'❌ Error al actualizar la solicitud: {str(error)}', ephemeral=True)
+
+class SolicitudCargadaView(discord.ui.View):
+    def __init__(self, pedido, caso, agente, fecha_carga, message_id):
+        super().__init__(timeout=None)
+        self.add_item(SolicitudCargadaButton(pedido, caso, agente, fecha_carga, message_id))
+
+class AttachmentHandler(commands.Cog):
+    def __init__(self, bot):
+        self.bot = bot
+        self.drive_service = None
+
+    async def get_drive_service(self):
+        """Get or initialize Google Drive service"""
+        if self.drive_service is None:
+            if not config.GOOGLE_CREDENTIALS_JSON:
+                raise ValueError("GOOGLE_CREDENTIALS_JSON no está configurado")
+            self.drive_service = initialize_google_drive(config.GOOGLE_CREDENTIALS_JSON)
+        return self.drive_service
+
+    @commands.Cog.listener()
+    async def on_message(self, message: discord.Message):
+        # Ignorar mensajes de bots
+        if message.author.bot:
+            return
+        
+        user_id = str(message.author.id)
+        cleanup_expired_states()
+        pending_data = get_user_state(user_id, "facturaA")
+        delete_user_state(user_id, "facturaA")
+        
+        # Solo manejar si el usuario está esperando adjuntos para Factura A
+        if pending_data and pending_data.get('type') == 'facturaA' and message.attachments:
+            pedido = pending_data.get('pedido')
+            solicitud_id = pending_data.get('solicitud_id')
+            if not pedido:
+                await message.reply('❌ Error: No se encontró el número de pedido')
+                return
+                
+            try:
+                # Obtener servicio de Google Drive
+                drive_service = await self.get_drive_service()
+                
+                # Buscar o crear carpeta del pedido
+                parent_folder_id = getattr(config, 'PARENT_DRIVE_FOLDER_ID', None)
+                if not parent_folder_id:
+                    print("Advertencia: PARENT_DRIVE_FOLDER_ID no está configurado, creando carpeta en raíz")
+                folder_name = f'FacturaA_{pedido}'
+                print(f"DEBUG: Creando carpeta con nombre: {folder_name}")
+                folder_id = find_or_create_drive_folder(drive_service, parent_folder_id or "", folder_name)
+                
+                # Subir cada adjunto
+                uploaded_files = []
+                for attachment in message.attachments:
+                    uploaded = upload_file_to_drive(drive_service, folder_id, attachment)
+                    uploaded_files.append(uploaded)
+                
+                # Confirmar al usuario
+                file_names = ', '.join([f["name"] for f in uploaded_files])
+                await message.reply(f'✅ Archivos subidos a Google Drive para el pedido {pedido}: {file_names}')
+                
+                # Buscar información del caso en Google Sheets para crear el embed
+                if not config.GOOGLE_CREDENTIALS_JSON or not config.SPREADSHEET_ID_FAC_A:
+                    print("Advertencia: Credenciales de Google no configuradas para buscar información del caso")
+                    caso_info = "N/A"
+                    fecha_carga = "N/A"
+                else:
+                    import utils.google_sheets as google_sheets
+                    client = google_sheets.initialize_google_sheets(config.GOOGLE_CREDENTIALS_JSON)
+                    spreadsheet = client.open_by_key(config.SPREADSHEET_ID_FAC_A)
+                    sheet_range = getattr(config, 'SHEET_RANGE_FAC_A', 'A:E')
+                    
+                    # Determinar la hoja
+                    hoja_nombre = None
+                    if '!' in sheet_range:
+                        partes = sheet_range.split('!')
+                        if len(partes) == 2:
+                            hoja_nombre = partes[0].strip("'")
+                            sheet_range_puro = partes[1]
+                        else:
+                            hoja_nombre = None
+                            sheet_range_puro = sheet_range
+                    else:
+                        sheet_range_puro = sheet_range
+                    
+                    if hoja_nombre:
+                        sheet = spreadsheet.worksheet(hoja_nombre)
+                    else:
+                        sheet = spreadsheet.sheet1
+                    
+                    # Buscar la fila del pedido para obtener información completa
+                    rows = sheet.get(sheet_range_puro)
+                    caso_info = "N/A"
+                    fecha_carga = "N/A"
+                    
+                    def normaliza_columna(nombre):
+                        return str(nombre).strip().replace(' ', '').replace('/', '').replace('-', '').lower()
+                    
+                    if rows and len(rows) > 1:
+                        header_row = rows[0]
+                        # Buscar columnas robustamente
+                        pedido_col = None
+                        caso_col = None
+                        fecha_col = None
+                        for idx, col_name in enumerate(header_row):
+                            norm = normaliza_columna(col_name)
+                            if norm == normaliza_columna('Número de pedido'):
+                                pedido_col = idx
+                            if norm == normaliza_columna('Caso'):
+                                caso_col = idx
+                            if norm == normaliza_columna('Fecha/Hora'):
+                                fecha_col = idx
+                        if pedido_col is not None:
+                            for row in rows[1:]:
+                                if len(row) > pedido_col and str(row[pedido_col]).strip() == pedido:
+                                    if caso_col is not None and len(row) > caso_col:
+                                        caso_info = str(row[caso_col]).replace('#', '')
+                                    if fecha_col is not None and len(row) > fecha_col:
+                                        fecha_carga = str(row[fecha_col])
+                                    break
+                
+                # Crear y enviar el embed
+                embed = discord.Embed(
+                    title='🧾 Nueva Solicitud de Factura A',
+                    description=f'Se ha cargado una nueva solicitud de Factura A con archivos adjuntos.',
+                    color=discord.Color.blue(),
+                    timestamp=datetime.now()
+                )
+                
+                embed.add_field(
+                    name='📋 Número de Pedido',
+                    value=pedido,
+                    inline=True
+                )
+                
+                embed.add_field(
+                    name='📝 Número de Caso',
+                    value=caso_info,
+                    inline=True
+                )
+                
+                embed.add_field(
+                    name='👤 Agente',
+                    value=message.author.display_name,
+                    inline=True
+                )
+                
+                embed.add_field(
+                    name='📅 Fecha de Carga',
+                    value=fecha_carga,
+                    inline=True
+                )
+                
+                embed.add_field(
+                    name='📎 Archivos',
+                    value=file_names,
+                    inline=False
+                )
+                
+                embed.set_footer(text='Presiona el botón para marcar como cargada')
+                
+                # Crear la vista con el botón
+                view = SolicitudCargadaView(pedido, caso_info, message.author.display_name, fecha_carga, str(message.id))
+                
+                # Enviar el embed mencionando a Bgh Back Office
+                Bgh_Back_Office_id = 1388209760314331297 
+                await message.channel.send(
+                    content=f'<@&{Bgh_Back_Office_id}> Nueva solicitud de Factura A cargada',
+                    embed=embed,
+                    view=view
+                )
+                
+            except Exception as error:
+                print(f'Error al subir adjuntos a Google Drive para Factura A: {error}')
+                await message.reply(f'❌ Hubo un error al subir los archivos a Google Drive. Detalles: {error}')
+
+async def setup(bot):
+    await bot.add_cog(AttachmentHandler(bot)) 

@@ -6,6 +6,7 @@ logs
 # Directorios temporales
 tmp
 temp
+tests
 
 myenv/
 
@@ -15,4 +16,5 @@ notas.txt
 
 
 __pycache__/
+__pycache__
 __init__.py
