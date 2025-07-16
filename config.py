@@ -43,6 +43,8 @@ if raw.lstrip().startswith('{'):
     try:
         GOOGLE_CREDENTIALS = json.loads(raw)
         GOOGLE_CREDENTIALS_PATH = None
+        # Alias para compatibilidad con código existente
+        GOOGLE_CREDENTIALS_JSON = GOOGLE_CREDENTIALS
         print("✅ Credenciales cargadas desde JSON en ENV.")
     except json.JSONDecodeError as e:
         print("Error CRÍTICO parseando JSON de credenciales:", e)
@@ -53,6 +55,8 @@ else:
         with open(raw, encoding='utf-8') as f:
             GOOGLE_CREDENTIALS = json.load(f)
         GOOGLE_CREDENTIALS_PATH = raw
+        # Alias para compatibilidad con código existente
+        GOOGLE_CREDENTIALS_JSON = GOOGLE_CREDENTIALS
         print("✅ Credenciales cargadas desde fichero local.")
     except Exception as e:
         print("Error CRÍTICO leyendo fichero de credenciales:", e)
