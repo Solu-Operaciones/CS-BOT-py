@@ -183,20 +183,31 @@ class TaskStartButton(discord.ui.Button):
     async def callback(self, interaction: discord.Interaction):
         await interaction.response.defer()
         user_id = str(interaction.user.id)
-        # --- Google Sheets ---
-        client = google_sheets.initialize_google_sheets(config.GOOGLE_CREDENTIALS_JSON)
-        spreadsheet = client.open_by_key(config.GOOGLE_SHEET_ID_TAREAS)
-        sheet_activas = spreadsheet.worksheet('Tareas Activas')
-        sheet_historial = spreadsheet.worksheet('Historial')
-        usuario = str(interaction.user)
-        tarea = self.tarea
-        observaciones = ''
-        tz = pytz.timezone('America/Argentina/Buenos_Aires')
-        now = datetime.now(tz)
-        inicio = now.strftime('%d/%m/%Y %H:%M:%S')
+        
         try:
+            # --- Google Sheets ---
+            await interaction.followup.send(f'🔄 Inicializando Google Sheets...', ephemeral=True)
+            client = google_sheets.initialize_google_sheets(config.GOOGLE_CREDENTIALS_JSON)
+            
+            await interaction.followup.send(f'🔄 Abriendo spreadsheet...', ephemeral=True)
+            spreadsheet = client.open_by_key(config.GOOGLE_SHEET_ID_TAREAS)
+            
+            await interaction.followup.send(f'🔄 Obteniendo hojas...', ephemeral=True)
+            sheet_activas = spreadsheet.worksheet('Tareas Activas')
+            sheet_historial = spreadsheet.worksheet('Historial')
+            
+            usuario = str(interaction.user)
+            tarea = self.tarea
+            observaciones = ''
+            tz = pytz.timezone('America/Argentina/Buenos_Aires')
+            now = datetime.now(tz)
+            inicio = now.strftime('%d/%m/%Y %H:%M:%S')
+            
+            await interaction.followup.send(f'🔄 Registrando tarea...', ephemeral=True)
             # Registrar tarea activa
             tarea_id = google_sheets.registrar_tarea_activa(sheet_activas, user_id, usuario, tarea, observaciones, inicio)
+            
+            await interaction.followup.send(f'🔄 Agregando al historial...', ephemeral=True)
             # Agregar evento al historial
             google_sheets.agregar_evento_historial(
                 sheet_historial,
@@ -210,6 +221,7 @@ class TaskStartButton(discord.ui.Button):
                 'Inicio',         # tipo_evento
                 ''                # tiempo_pausada
             )
+            
             # Enviar embed al canal de registro (sin borrado)
             if config.TARGET_CHANNEL_ID_TAREAS_REGISTRO:
                 canal_registro = interaction.guild.get_channel(int(config.TARGET_CHANNEL_ID_TAREAS_REGISTRO))
@@ -226,37 +238,61 @@ class TaskStartButton(discord.ui.Button):
                         'type': 'tarea',
                         'timestamp': time.time()
                     }, "tarea")
+            
             # Enviar mensaje de confirmación y borrarlo a los 2 minutos
-            msg_confirm = await interaction.channel.send(f'¡Tarea "{tarea}" iniciada y registrada!')
+            msg_confirm = await interaction.channel.send(f'✅ ¡Tarea "{tarea}" iniciada y registrada!')
             await asyncio.sleep(120)
             try:
                 await msg_confirm.delete()
             except:
                 pass
+                
         except Exception as e:
+            error_msg = f'❌ **Error al registrar la tarea:**\n\n'
             if "ya tiene una tarea activa" in str(e):
-                await interaction.followup.send(f'❌ {str(e)}', ephemeral=True)
+                error_msg += f'**Problema:** {str(e)}'
+            elif "404" in str(e) or "not found" in str(e).lower():
+                error_msg += f'**Problema:** No se encontró el spreadsheet o las hojas.\n\n'
+                error_msg += f'**ID del spreadsheet:** `{config.GOOGLE_SHEET_ID_TAREAS}`\n'
+                error_msg += f'**Hojas requeridas:** `Tareas Activas`, `Historial`\n\n'
+                error_msg += f'**Error completo:** {str(e)}'
+            elif "403" in str(e) or "permission" in str(e).lower():
+                error_msg += f'**Problema:** Error de permisos en Google Sheets.\n\n'
+                error_msg += f'**Error completo:** {str(e)}'
             else:
-                await interaction.followup.send(f'❌ Error al registrar la tarea: {str(e)}', ephemeral=True)
+                error_msg += f'**Error completo:** {str(e)}'
+            
+            await interaction.followup.send(error_msg, ephemeral=True)
 
 class TaskObservacionesModal(discord.ui.Modal, title='Registrar Observaciones'):
     observaciones = discord.ui.TextInput(label='Observaciones (opcional)', required=False, style=discord.TextStyle.paragraph)
 
     async def on_submit(self, interaction: discord.Interaction):
         user_id = str(interaction.user.id)
-        # --- Google Sheets ---
-        client = google_sheets.initialize_google_sheets(config.GOOGLE_CREDENTIALS_JSON)
-        spreadsheet = client.open_by_key(config.GOOGLE_SHEET_ID_TAREAS)
-        sheet_activas = spreadsheet.worksheet('Tareas Activas')
-        sheet_historial = spreadsheet.worksheet('Historial')
-        usuario = str(interaction.user)
-        tarea = 'Otra'
-        obs = self.observaciones.value.strip()
-        tz = pytz.timezone('America/Argentina/Buenos_Aires')
-        now = datetime.now(tz)
-        inicio = now.strftime('%d/%m/%Y %H:%M:%S')
+        
         try:
+            # --- Google Sheets ---
+            await interaction.response.send_message(f'🔄 Inicializando Google Sheets...', ephemeral=True)
+            client = google_sheets.initialize_google_sheets(config.GOOGLE_CREDENTIALS_JSON)
+            
+            await interaction.followup.send(f'🔄 Abriendo spreadsheet...', ephemeral=True)
+            spreadsheet = client.open_by_key(config.GOOGLE_SHEET_ID_TAREAS)
+            
+            await interaction.followup.send(f'🔄 Obteniendo hojas...', ephemeral=True)
+            sheet_activas = spreadsheet.worksheet('Tareas Activas')
+            sheet_historial = spreadsheet.worksheet('Historial')
+            
+            usuario = str(interaction.user)
+            tarea = 'Otra'
+            obs = self.observaciones.value.strip()
+            tz = pytz.timezone('America/Argentina/Buenos_Aires')
+            now = datetime.now(tz)
+            inicio = now.strftime('%d/%m/%Y %H:%M:%S')
+            
+            await interaction.followup.send(f'🔄 Registrando tarea...', ephemeral=True)
             tarea_id = google_sheets.registrar_tarea_activa(sheet_activas, user_id, usuario, tarea, obs, inicio)
+            
+            await interaction.followup.send(f'🔄 Agregando al historial...', ephemeral=True)
             google_sheets.agregar_evento_historial(
                 sheet_historial,
                 user_id,
@@ -269,6 +305,7 @@ class TaskObservacionesModal(discord.ui.Modal, title='Registrar Observaciones'):
                 'Inicio',         # tipo_evento
                 ''                # tiempo_pausada
             )
+            
             # Enviar embed al canal de registro (sin borrado)
             if config.TARGET_CHANNEL_ID_TAREAS_REGISTRO:
                 canal_registro = interaction.guild.get_channel(int(config.TARGET_CHANNEL_ID_TAREAS_REGISTRO))
@@ -287,7 +324,7 @@ class TaskObservacionesModal(discord.ui.Modal, title='Registrar Observaciones'):
                     }, "tarea")
             
             # Enviar confirmación al usuario
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 f'✅ **Tarea "Otra" registrada exitosamente**\n\n'
                 f'📋 **Detalles:**\n'
                 f'• **Observaciones:** {obs if obs else "Sin observaciones"}\n'
@@ -296,10 +333,21 @@ class TaskObservacionesModal(discord.ui.Modal, title='Registrar Observaciones'):
                 ephemeral=True
             )
         except Exception as e:
+            error_msg = f'❌ **Error al registrar la tarea:**\n\n'
             if "ya tiene una tarea activa" in str(e):
-                await interaction.response.send_message(f'❌ {str(e)}', ephemeral=True)
+                error_msg += f'**Problema:** {str(e)}'
+            elif "404" in str(e) or "not found" in str(e).lower():
+                error_msg += f'**Problema:** No se encontró el spreadsheet o las hojas.\n\n'
+                error_msg += f'**ID del spreadsheet:** `{config.GOOGLE_SHEET_ID_TAREAS}`\n'
+                error_msg += f'**Hojas requeridas:** `Tareas Activas`, `Historial`\n\n'
+                error_msg += f'**Error completo:** {str(e)}'
+            elif "403" in str(e) or "permission" in str(e).lower():
+                error_msg += f'**Problema:** Error de permisos en Google Sheets.\n\n'
+                error_msg += f'**Error completo:** {str(e)}'
             else:
-                await interaction.response.send_message(f'❌ Error al registrar la tarea: {str(e)}', ephemeral=True)
+                error_msg += f'**Error completo:** {str(e)}'
+            
+            await interaction.followup.send(error_msg, ephemeral=True)
 
 def crear_embed_tarea(user, tarea, observaciones, inicio, estado, tiempo_pausado='00:00:00', cantidad_casos=None):
     """
