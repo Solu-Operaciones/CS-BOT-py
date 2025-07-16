@@ -23,9 +23,10 @@ async def on_ready():
     # Inicializar APIs de Google
     global sheets_instance, drive_instance
     try:
-        if not config.GOOGLE_CREDENTIALS_PATH:
-            print("Error CRÍTICO: La variable de entorno GOOGLE_CREDENTIALS_PATH no está configurada.")
+        if not config.GOOGLE_CREDENTIALS:
+            print("Error CRÍTICO: credenciales de Google no cargadas.")
             return
+
         sheets_instance = initialize_google_sheets(config.GOOGLE_CREDENTIALS)
         drive_instance  = initialize_google_drive(config.GOOGLE_CREDENTIALS)
         print("APIs de Google inicializadas correctamente.")

@@ -29,21 +29,31 @@ TARGET_CHANNEL_ID_CASOS_PIEZA_FALTANTE = os.getenv('TARGET_CHANNEL_ID_CASOS_PIEZ
 ANDREANI_AUTH_HEADER = os.getenv('ANDREANI_API_AUTH')
 
 # Google Services
-# GOOGLE_CREDENTIALS_JSON = os.getenv('GOOGLE_CREDENTIALS_JSON')
-
-# Google Services: carga desde fichero
-GOOGLE_CREDENTIALS_PATH = os.getenv('GOOGLE_CREDENTIALS_PATH')
-if not GOOGLE_CREDENTIALS_PATH:
-    print("Error CRÍTICO: GOOGLE_CREDENTIALS_PATH no configurado.")
+raw = os.getenv('GOOGLE_CREDENTIALS_PATH') or os.getenv('GOOGLE_CREDENTIALS_JSON')
+if not raw:
+    print("Error CRÍTICO: no se ha proporcionado ni GOOGLE_CREDENTIALS_PATH ni GOOGLE_CREDENTIALS_JSON.")
     sys.exit(1)
 
-try:
-    with open(GOOGLE_CREDENTIALS_PATH, 'r', encoding='utf-8') as f:
-        GOOGLE_CREDENTIALS = json.load(f)
-    print("✅ Credenciales de Google cargadas desde fichero.")
-except Exception as e:
-    print(f"Error cargando credenciales de Google: {e}")
-    sys.exit(1)
+if raw.lstrip().startswith('{'):
+    # Llegó el JSON completo en ENV
+    try:
+        GOOGLE_CREDENTIALS = json.loads(raw)
+        GOOGLE_CREDENTIALS_PATH = None
+        print("✅ Credenciales cargadas desde JSON en ENV.")
+    except json.JSONDecodeError as e:
+        print("Error CRÍTICO parseando JSON de credenciales:", e)
+        sys.exit(1)
+else:
+    # Llegó una ruta de fichero local (para desarrollo)
+    try:
+        with open(raw, encoding='utf-8') as f:
+            GOOGLE_CREDENTIALS = json.load(f)
+        GOOGLE_CREDENTIALS_PATH = raw
+        print("✅ Credenciales cargadas desde fichero local.")
+    except Exception as e:
+        print("Error CRÍTICO leyendo fichero de credenciales:", e)
+        sys.exit(1)
+
 
 
 SPREADSHEET_ID_FAC_A = os.getenv('GOOGLE_SHEET_ID_FAC_A')
