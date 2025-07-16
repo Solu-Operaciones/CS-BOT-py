@@ -806,6 +806,7 @@ class IniciarBuscarCasoButton(discord.ui.Button):
 class FacturaAButton(discord.ui.Button):
     def __init__(self):
         super().__init__(label='Factura A', emoji='🧾', style=discord.ButtonStyle.success, custom_id='panel_factura_a')
+        
     async def callback(self, interaction: discord.Interaction):
         try:
             from config import TARGET_CHANNEL_ID_FAC_A
@@ -814,7 +815,7 @@ class FacturaAButton(discord.ui.Button):
                 canal = interaction.guild.get_channel(canal_id)
                 if canal:
                     await interaction.response.defer()
-                    msg_panel = await interaction.followup.send('✅ Revisa el canal correspondiente para continuar el flujo.')
+                    msg_panel = await interaction.followup.send(f'✅ Revisa el canal <#{canal_id}> para continuar el flujo.')
                     msg = await canal.send(f'🧾 {interaction.user.mention}, haz clic en el botón para iniciar una solicitud de Factura A:', view=IniciarFacturaAView(interaction.user.id))
                     await asyncio.sleep(20)
                     try:
@@ -847,7 +848,7 @@ class CambiosDevolucionesButton(discord.ui.Button):
                 canal = interaction.guild.get_channel(canal_id)
                 if canal:
                     await interaction.response.defer()
-                    msg_panel = await interaction.followup.send('✅ Revisa el canal correspondiente para continuar el flujo.')
+                    msg_panel = await interaction.followup.send(f'✅ Revisa el canal <#{canal_id}> para continuar el flujo.')
                     msg = await canal.send(f'🔄 {interaction.user.mention}, haz clic en el botón para iniciar el registro de Cambios/Devoluciones:', view=IniciarCambiosDevolucionesView(interaction.user.id))
                     await asyncio.sleep(20)
                     try:
@@ -903,7 +904,7 @@ class SolicitudesEnviosButton(discord.ui.Button):
                 canal = interaction.guild.get_channel(canal_id)
                 if canal:
                     await interaction.response.defer()
-                    msg_panel = await interaction.followup.send('✅ Revisa el canal correspondiente para continuar el flujo.')
+                    msg_panel = await interaction.followup.send(f'✅ Revisa el canal <#{canal_id}> para continuar el flujo.')
                     msg = await canal.send(f'🚚 {interaction.user.mention}, haz clic en el botón para iniciar una solicitud de envío:', view=IniciarSolicitudesEnviosView(interaction.user.id))
                     await asyncio.sleep(20)
                     try:
@@ -959,7 +960,7 @@ class TrackingButton(discord.ui.Button):
                 canal = interaction.guild.get_channel(canal_id)
                 if canal:
                     await interaction.response.defer()
-                    msg_panel = await interaction.followup.send('✅ Revisa el canal correspondiente para continuar el flujo.')
+                    msg_panel = await interaction.followup.send(f'✅ Revisa el canal <#{canal_id}> para continuar el flujo.')
                     msg = await canal.send(f'📦 {interaction.user.mention}, haz clic en el botón para consultar el estado de un envío:', view=IniciarTrackingView(interaction.user.id))
                     await asyncio.sleep(20)
                     try:
@@ -992,7 +993,7 @@ class BuscarCasoButton(discord.ui.Button):
                 canal = interaction.guild.get_channel(canal_id)
                 if canal:
                     await interaction.response.defer()
-                    msg_panel = await interaction.followup.send('✅ Revisa el canal correspondiente para continuar el flujo.')
+                    msg_panel = await interaction.followup.send(f'✅ Revisa el canal <#{canal_id}> para continuar el flujo.')
                     msg = await canal.send(f'🔍 {interaction.user.mention}, haz clic en el botón para buscar un caso:', view=IniciarBuscarCasoView(interaction.user.id))
                     await asyncio.sleep(20)
                     try:
@@ -1025,7 +1026,7 @@ class ReembolsosButton(discord.ui.Button):
                 canal = interaction.guild.get_channel(canal_id)
                 if canal:
                     await interaction.response.defer()
-                    msg_panel = await interaction.followup.send('✅ Revisa el canal correspondiente para continuar el flujo.')
+                    msg_panel = await interaction.followup.send(f'✅ Revisa el canal <#{canal_id}> para continuar el flujo.')
                     msg = await canal.send(f'💸 {interaction.user.mention}, haz clic en el botón para iniciar el registro de un reembolso:', view=IniciarReembolsosView(interaction.user.id))
                     await asyncio.sleep(20)
                     try:
@@ -1081,7 +1082,7 @@ class CancelacionesButton(discord.ui.Button):
                 canal = interaction.guild.get_channel(canal_id)
                 if canal:
                     await interaction.response.defer()
-                    msg_panel = await interaction.followup.send('✅ Revisa el canal correspondiente para continuar el flujo.')
+                    msg_panel = await interaction.followup.send(f'✅ Revisa el canal <#{canal_id}> para continuar el flujo.')
                     msg = await canal.send(f'❌ {interaction.user.mention}, haz clic en el botón para iniciar el registro de una cancelación:', view=IniciarCancelacionesView(interaction.user.id))
                     await asyncio.sleep(20)
                     try:
@@ -1137,7 +1138,7 @@ class ReclamosMLButton(discord.ui.Button):
                 canal = interaction.guild.get_channel(canal_id)
                 if canal:
                     await interaction.response.defer()
-                    msg_panel = await interaction.followup.send('✅ Revisa el canal correspondiente para continuar el flujo.')
+                    msg_panel = await interaction.followup.send(f'✅ Revisa el canal <#{canal_id}> para continuar el flujo.')
                     msg = await canal.send(f'🛒 {interaction.user.mention}, haz clic en el botón para iniciar un reclamo ML:', view=IniciarReclamosMLView(interaction.user.id))
                     await asyncio.sleep(20)
                     try:
@@ -1193,7 +1194,7 @@ class PiezaFaltanteButton(discord.ui.Button):
                 canal = interaction.guild.get_channel(canal_id)
                 if canal:
                     await interaction.response.defer()
-                    msg_panel = await interaction.followup.send('✅ Revisa el canal correspondiente para continuar el flujo.')
+                    msg_panel = await interaction.followup.send(f'✅ Revisa el canal <#{canal_id}> para continuar el flujo.')
                     msg = await canal.send(f'🧩 {interaction.user.mention}, haz clic en el botón para registrar una pieza faltante:', view=IniciarPiezaFaltanteView(interaction.user.id))
                     await asyncio.sleep(20)
                     try:
