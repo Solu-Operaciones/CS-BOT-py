@@ -670,6 +670,11 @@ class SolicitudEnviosModal(discord.ui.Modal, title='Detalles de la Solicitud de 
             now = datetime.now(tz)
             fecha_hora = now.strftime('%d-%m-%Y %H:%M:%S')
             agente_name = interaction.user.display_name
+            # Debug: Mostrar el header real de la hoja
+            header = rows[0] if rows else []
+            print(f"DEBUG - Header de la hoja: {header}")
+            print(f"DEBUG - Cantidad de columnas en header: {len(header)}")
+            
             # Armar la fila en el orden esperado según la hoja
             row_data = [
                 pedido,                    # Número de pedido
@@ -686,12 +691,18 @@ class SolicitudEnviosModal(discord.ui.Modal, title='Detalles de la Solicitud de 
                 ''                         # ErrorEnvioCheck
             ]
             
+            print(f"DEBUG - row_data antes de ajustar: {row_data}")
+            print(f"DEBUG - Cantidad de elementos en row_data: {len(row_data)}")
+            
             # Ajustar la cantidad de columnas al header real de la hoja
-            header = rows[0] if rows else []
             if len(row_data) < len(header):
                 row_data += [''] * (len(header) - len(row_data))
+                print(f"DEBUG - Se agregaron {len(header) - len(row_data)} columnas vacías")
             elif len(row_data) > len(header):
                 row_data = row_data[:len(header)]
+                print(f"DEBUG - Se recortaron {len(row_data) - len(header)} columnas")
+            
+            print(f"DEBUG - row_data final: {row_data}")
             
             # Buscar por nombre la columna "Agente Back" y setear "Nadie" si existe
             def normaliza_columna(nombre):
