@@ -20,6 +20,23 @@ class DiscordLogHandler(logging.Handler):
         self.last_send_time = 0
         self.min_interval = 1.0  # Mínimo 1 segundo entre mensajes
         
+    def filter(self, record):
+        """Filtrar mensajes de rate limiting y otros spam"""
+        # Filtrar mensajes de rate limiting
+        if hasattr(record, 'msg') and record.msg:
+            msg = str(record.msg).lower()
+            if any(phrase in msg for phrase in [
+                'rate limited', 'rate limiting', 'responded with 429',
+                'retrying in', 'done sleeping for the rate limit'
+            ]):
+                return False
+        
+        # Filtrar mensajes de librerías externas
+        if record.name.startswith(('discord.', 'urllib3.', 'googleapiclient.', 'google.auth.')):
+            return False
+            
+        return True
+        
     def emit(self, record):
         """Emitir el log a Discord"""
         try:
@@ -137,7 +154,10 @@ class DiscordConsoleRedirector:
                'discord.client' in stripped_text or \
                'urllib3' in stripped_text or \
                'googleapiclient' in stripped_text or \
-               'google.auth' in stripped_text:
+               'google.auth' in stripped_text or \
+               'rate limited' in stripped_text.lower() or \
+               'rate limiting' in stripped_text.lower() or \
+               'responded with 429' in stripped_text:
                 return  # No enviar estos mensajes a Discord
             
             # Enviar a Discord
@@ -202,19 +222,19 @@ def setup_discord_logging(bot):
     logger.setLevel(logging.DEBUG)
     
     # Filtrar loggers de librerías externas para reducir spam
-    logging.getLogger('discord').setLevel(logging.WARNING)
-    logging.getLogger('discord.http').setLevel(logging.WARNING)
-    logging.getLogger('discord.gateway').setLevel(logging.WARNING)
-    logging.getLogger('discord.client').setLevel(logging.WARNING)
-    logging.getLogger('urllib3').setLevel(logging.WARNING)
-    logging.getLogger('urllib3.connectionpool').setLevel(logging.WARNING)
-    logging.getLogger('urllib3.util.retry').setLevel(logging.WARNING)
-    logging.getLogger('googleapiclient').setLevel(logging.WARNING)
-    logging.getLogger('googleapiclient.discovery').setLevel(logging.WARNING)
-    logging.getLogger('googleapiclient.discovery_cache').setLevel(logging.WARNING)
-    logging.getLogger('google_auth_httplib2').setLevel(logging.WARNING)
-    logging.getLogger('google.auth').setLevel(logging.WARNING)
-    logging.getLogger('google.auth.transport').setLevel(logging.WARNING)
+    logging.getLogger('discord').setLevel(logging.ERROR)
+    logging.getLogger('discord.http').setLevel(logging.ERROR)
+    logging.getLogger('discord.gateway').setLevel(logging.ERROR)
+    logging.getLogger('discord.client').setLevel(logging.ERROR)
+    logging.getLogger('urllib3').setLevel(logging.ERROR)
+    logging.getLogger('urllib3.connectionpool').setLevel(logging.ERROR)
+    logging.getLogger('urllib3.util.retry').setLevel(logging.ERROR)
+    logging.getLogger('googleapiclient').setLevel(logging.ERROR)
+    logging.getLogger('googleapiclient.discovery').setLevel(logging.ERROR)
+    logging.getLogger('googleapiclient.discovery_cache').setLevel(logging.ERROR)
+    logging.getLogger('google_auth_httplib2').setLevel(logging.ERROR)
+    logging.getLogger('google.auth').setLevel(logging.ERROR)
+    logging.getLogger('google.auth.transport').setLevel(logging.ERROR)
     
     # Crear handler para Discord con filtros
     discord_handler = DiscordLogHandler(bot, config.TARGET_CHANNEL_ID_LOGS)

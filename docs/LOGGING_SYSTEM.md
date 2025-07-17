@@ -109,9 +109,10 @@ El sistema se limpia automáticamente cuando el bot se apaga.
 
 ### 5. Filtrado Inteligente
 
-- **Loggers externos filtrados**: Discord, urllib3, Google APIs
+- **Loggers externos filtrados**: Discord, urllib3, Google APIs (nivel ERROR)
 - **Mensajes de consola filtrados**: Comandos slash, mensajes de librerías
 - **Rate limiting**: Evita spam y rate limits de Discord
+- **Filtros específicos**: Mensajes de rate limiting, retry, etc.
 
 ### 6. Comandos de Control
 
@@ -220,4 +221,4 @@ Elimina los últimos 100 mensajes del canal de logs (solo mensajes del bot).
 2. **Tamaño de Mensajes**: Los mensajes largos se dividen automáticamente
 3. **Dependencia del Bot**: Los logs solo se envían cuando el bot está conectado
 4. **Canal de Logs**: Asegúrate de que el canal tenga permisos adecuados para el bot
-5. **Filtrado**: Los mensajes de librerías externas se filtran automáticamente para reducir spam 
+5. **Filtrado**: Los mensajes de librerías externas y rate limiting se filtran automáticamente para reducir spam 
