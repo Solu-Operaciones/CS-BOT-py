@@ -75,8 +75,23 @@ def find_or_create_drive_folder(drive_service, parent_id: str, folder_name: str)
                 # Forzar creación en Shared Drive especificando el driveId
                 try:
                     # Obtener el driveId del parent
-                    parent_info = drive_service.files().get(fileId=parent_id, fields='driveId').execute()
+                    parent_info = drive_service.files().get(fileId=parent_id, fields='driveId,parents').execute()
                     parent_drive_id = parent_info.get('driveId')
+                    
+                    # Si no tiene driveId, buscar en los parents
+                    if not parent_drive_id:
+                        print("🔍 DEBUG - Parent no es Shared Drive, buscando Shared Drive en parents...")
+                        parent_parents = parent_info.get('parents', [])
+                        for parent_parent_id in parent_parents:
+                            try:
+                                parent_parent_info = drive_service.files().get(fileId=parent_parent_id, fields='driveId').execute()
+                                parent_drive_id = parent_parent_info.get('driveId')
+                                if parent_drive_id:
+                                    print(f"🔍 DEBUG - Encontrada Shared Drive en parent: {parent_drive_id}")
+                                    break
+                            except:
+                                continue
+                    
                     if parent_drive_id:
                         print(f"🔍 DEBUG - Forzando creación en Shared Drive ID: {parent_drive_id}")
                         # Usar supportsAllDrives para forzar creación en Shared Drive
@@ -86,7 +101,7 @@ def find_or_create_drive_folder(drive_service, parent_id: str, folder_name: str)
                             supportsAllDrives=True
                         ).execute()
                     else:
-                        print("⚠️ No se pudo obtener driveId del parent, creando normalmente")
+                        print("⚠️ No se pudo obtener driveId del parent ni de sus parents, creando normalmente")
                         file = drive_service.files().create(body=file_metadata, fields='id, name, parents, driveId').execute()
                 except Exception as drive_error:
                     print(f"⚠️ Error obteniendo driveId, creando normalmente: {drive_error}")
