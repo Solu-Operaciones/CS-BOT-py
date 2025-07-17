@@ -36,19 +36,33 @@ def find_or_create_drive_folder(drive_service, parent_id: str, folder_name: str)
     """
     if not drive_service or not folder_name:
         raise ValueError("find_or_create_drive_folder: Parámetros incompletos.")
+    
+    print(f"🔍 DEBUG - Buscando carpeta: '{folder_name}'")
+    print(f"🔍 DEBUG - Parent ID: '{parent_id}'")
+    
     try:
         query = f"name='{folder_name.replace("'", "\\'")}' and mimeType='application/vnd.google-apps.folder' and trashed=false"
         if parent_id:
             query += f" and '{parent_id}' in parents"
         else:
             query += " and 'root' in parents"
-        response = drive_service.files().list(q=query, fields='files(id, name)', spaces='drive').execute()
+        
+        print(f"🔍 DEBUG - Query de búsqueda: '{query}'")
+        
+        response = drive_service.files().list(q=query, fields='files(id, name, parents)', spaces='drive').execute()
         files = response.get('files', [])
+        
+        print(f"🔍 DEBUG - Archivos encontrados: {len(files)}")
+        for i, file in enumerate(files):
+            print(f"🔍 DEBUG - Archivo {i+1}: ID={file.get('id')}, Name={file.get('name')}, Parents={file.get('parents')}")
+        
         if files:
-            print(f"Carpeta de Drive '{folder_name}' encontrada.")
+            print(f"✅ Carpeta de Drive '{folder_name}' encontrada con ID: {files[0]['id']}")
             return files[0]['id']
         else:
-            print(f"Carpeta de Drive '{folder_name}' no encontrada. Creando...")
+            print(f"❌ Carpeta de Drive '{folder_name}' no encontrada. Creando...")
+            print(f"🔍 DEBUG - Parent ID para crear: '{parent_id}'")
+            
             # Delay antes de crear carpeta para evitar rate limiting
             time.sleep(1)
             file_metadata: dict = {
@@ -57,11 +71,16 @@ def find_or_create_drive_folder(drive_service, parent_id: str, folder_name: str)
             }
             if parent_id:
                 file_metadata['parents'] = [parent_id]
-            file = drive_service.files().create(body=file_metadata, fields='id').execute()
-            print(f"Carpeta de Drive '{folder_name}' creada con ID: {file['id']}")
+                print(f"🔍 DEBUG - Metadata con parent: {file_metadata}")
+            else:
+                print(f"🔍 DEBUG - Metadata sin parent: {file_metadata}")
+            
+            file = drive_service.files().create(body=file_metadata, fields='id, name, parents').execute()
+            print(f"✅ Carpeta de Drive '{folder_name}' creada con ID: {file['id']}")
+            print(f"🔍 DEBUG - Carpeta creada - ID: {file.get('id')}, Name: {file.get('name')}, Parents: {file.get('parents')}")
             return file['id']
     except Exception as error:
-        print(f"Error al buscar o crear la carpeta '{folder_name}' en Drive:", error)
+        print(f"❌ Error al buscar o crear la carpeta '{folder_name}' en Drive:", error)
         raise
 
 import time
@@ -118,8 +137,11 @@ def upload_file_to_drive(drive_service, folder_id: str, attachment) -> dict:
             'name': attachment.filename,
             'parents': [folder_id],
         }
+        print(f"🔍 DEBUG - Metadata para subir archivo: {file_metadata}")
+        print(f"🔍 DEBUG - Folder ID donde se subirá: '{folder_id}'")
+        
         media = MediaIoBaseUpload(io.BytesIO(file_response.content), mimetype=file_response.headers.get('content-type', 'application/octet-stream'))
-        print(f"Subiendo archivo {attachment.filename} a Drive en la carpeta {folder_id}...")
+        print(f"🔍 DEBUG - Subiendo archivo {attachment.filename} a Drive en la carpeta {folder_id}...")
         uploaded_file = drive_service.files().create(body=file_metadata, media_body=media, fields='id, name').execute()
         print(f"Archivo '{uploaded_file['name']}' subido con éxito. ID de Drive: {uploaded_file['id']}")
         return uploaded_file

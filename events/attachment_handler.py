@@ -171,11 +171,19 @@ class AttachmentHandler(commands.Cog):
                 
                 # Buscar o crear carpeta del pedido
                 parent_folder_id = getattr(config, 'PARENT_DRIVE_FOLDER_ID', None)
+                print(f"🔍 DEBUG - PARENT_DRIVE_FOLDER_ID desde config: '{parent_folder_id}'")
+                
                 if not parent_folder_id:
-                    print("Advertencia: PARENT_DRIVE_FOLDER_ID no está configurado, creando carpeta en raíz")
+                    print("❌ Advertencia: PARENT_DRIVE_FOLDER_ID no está configurado, creando carpeta en raíz")
+                else:
+                    print(f"✅ PARENT_DRIVE_FOLDER_ID configurado: '{parent_folder_id}'")
+                
                 folder_name = f'FacturaA_{pedido}'
-                print(f"DEBUG: Creando carpeta con nombre: {folder_name}")
+                print(f"🔍 DEBUG - Nombre de carpeta a crear: '{folder_name}'")
+                print(f"🔍 DEBUG - Llamando find_or_create_drive_folder con parent_id: '{parent_folder_id}'")
+                
                 folder_id = find_or_create_drive_folder(drive_service, parent_folder_id or "", folder_name)
+                print(f"🔍 DEBUG - ID de carpeta retornado: '{folder_id}'")
                 
                 # Subir cada adjunto
                 uploaded_files = []
