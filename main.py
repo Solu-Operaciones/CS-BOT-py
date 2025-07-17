@@ -2,9 +2,11 @@ import discord
 from discord.ext import commands, tasks
 import asyncio
 import config
+import logging
 from utils.google_sheets import initialize_google_sheets, check_sheet_for_errors
 from utils.google_drive import initialize_google_drive
 from utils.andreani import get_andreani_tracking
+from utils.discord_logger import setup_discord_logging, log_exception
 # from utils.qa_service import get_answer_from_manual
 # from utils.manual_processor import load_and_cache_manual, get_manual_text
 
@@ -19,6 +21,14 @@ drive_instance = None
 @bot.event
 async def on_ready():
     print(f'Bot conectado como {bot.user}!')
+    
+    # Configurar sistema de logging para Discord
+    try:
+        global console_redirector
+        console_redirector = setup_discord_logging(bot)
+        print("Sistema de logging para Discord configurado correctamente.")
+    except Exception as error:
+        print(f"Error al configurar sistema de logging: {error}")
     
     # Inicializar APIs de Google
     global sheets_instance, drive_instance
@@ -50,7 +60,7 @@ async def on_ready():
     # Iniciar la verificación periódica de errores en la hoja
     if (config.SPREADSHEET_ID_BUSCAR_CASO and config.SHEET_RANGE_CASOS_READ and 
         config.TARGET_CHANNEL_ID_CASOS and config.GUILD_ID):
-        print(f"Iniciando verificación periódica de errores cada {config.ERROR_CHECK_INTERVAL_MS / 1000} segundos en la hoja de búsqueda.")
+        print(f"Iniciando verificación periódica de errores cada {config.ERROR_CHECK_INTERVAL_MIN} minutos en la hoja de búsqueda.")
         check_errors.start()
     else:
         print("La verificación periódica de errores en la hoja de búsqueda no se iniciará debido a la falta de configuración.")
@@ -117,6 +127,26 @@ async def before_check_errors():
     """Esperar hasta que el bot esté listo antes de iniciar la tarea"""
     await bot.wait_until_ready()
 
+@bot.event
+async def on_error(event, *args, **kwargs):
+    """Manejador global de errores"""
+    import traceback
+    error_info = traceback.format_exc()
+    print(f"Error en evento {event}: {error_info}")
+    try:
+        log_exception(bot, Exception(f"Error en evento {event}: {error_info}"), f"Evento: {event}")
+    except:
+        pass
+
+@bot.event
+async def on_command_error(ctx, error):
+    """Manejador de errores de comandos"""
+    print(f"Error en comando {ctx.command}: {error}")
+    try:
+        log_exception(bot, error, f"Comando: {ctx.command}")
+    except:
+        pass
+
 # Cargar eventos y comandos
 async def load_extensions():
     """Cargar todas las extensiones (eventos y comandos)"""
@@ -176,6 +206,13 @@ async def main():
         await bot.start(config.TOKEN)
     finally:
         print("Paso 4: Apagando bot de forma inmediata...")
+        # Limpiar sistema de logging si existe
+        try:
+            if 'console_redirector' in globals():
+                console_redirector.stop()
+                print("Sistema de logging detenido.")
+        except:
+            pass
     # except Exception as e:
     #     print(f"Paso 3: Error al conectar con Discord: {e}")
     #     return
