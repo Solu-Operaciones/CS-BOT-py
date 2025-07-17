@@ -300,8 +300,14 @@ class AdminCommands(commands.Cog):
                 except Exception as e:
                     print(f'[ADMIN] Error recargando {extension}: {e}')
             
-            # Limpiar comandos existentes y sincronizar todos los nuevos
-            self.bot.tree.clear_commands(guild=guild)
+            # Esperar un momento para que los comandos se registren
+            await asyncio.sleep(1)
+            
+            # Verificar cuántos comandos están registrados antes de sincronizar
+            commands_before = len(self.bot.tree.get_commands())
+            print(f'[ADMIN] Comandos registrados antes de sincronizar: {commands_before}')
+            
+            # Sincronizar comandos (sin limpiar)
             synced = await self.bot.tree.sync(guild=guild)
             
             embed = discord.Embed(
@@ -336,6 +342,12 @@ class AdminCommands(commands.Cog):
                 inline=True
             )
             
+            embed.add_field(
+                name='📊 Comandos Registrados',
+                value=f'{commands_before} comandos en el tree',
+                inline=True
+            )
+            
             embed.set_footer(text=f'Restaurado por {interaction.user.display_name}')
             
             await interaction.followup.send(embed=embed, ephemeral=True)
@@ -347,6 +359,122 @@ class AdminCommands(commands.Cog):
                 ephemeral=True
             )
             print(f'[ADMIN] Error restaurando comandos: {e}')
+
+    @app_commands.guilds(discord.Object(id=int(config.GUILD_ID)))
+    @app_commands.command(name='force_restore', description='🔄 Restauración forzada de todos los comandos (solo admins)')
+    async def force_restore(self, interaction: discord.Interaction):
+        """Comando para restauración forzada de todos los comandos"""
+        
+        # Verificar permisos de administrador o usuario autorizado
+        if not interaction.user.guild_permissions.administrator and str(interaction.user.id) not in config.SETUP_USER_IDS:
+            await interaction.response.send_message(
+                '❌ **Acceso denegado**\n\n'
+                'Solo los administradores o usuarios autorizados pueden usar este comando.',
+                ephemeral=True
+            )
+            return
+
+        try:
+            await interaction.response.defer(thinking=True)
+            
+            if not config.GUILD_ID:
+                await interaction.followup.send("❌ GUILD_ID no está configurado.", ephemeral=True)
+                return
+                
+            guild = discord.Object(id=int(config.GUILD_ID))
+            
+            # Limpiar comandos existentes primero
+            self.bot.tree.clear_commands(guild=guild)
+            print(f'[ADMIN] Comandos limpiados del guild {config.GUILD_ID}')
+            
+            # Recargar extensiones una por una
+            extensions_to_reload = [
+                'events.interaction_commands',
+                'events.interaction_selects', 
+                'events.attachment_handler',
+                'events.admin_commands',
+                'events.logging_commands',
+                'interactions.modals',
+                'interactions.select_menus',
+                'tasks.panel'
+            ]
+            
+            reloaded_extensions = []
+            for extension in extensions_to_reload:
+                try:
+                    await self.bot.reload_extension(extension)
+                    reloaded_extensions.append(extension)
+                    print(f'[ADMIN] Extension recargada: {extension}')
+                    # Pequeña pausa entre recargas
+                    await asyncio.sleep(0.5)
+                except Exception as e:
+                    print(f'[ADMIN] Error recargando {extension}: {e}')
+            
+            # Esperar a que todos los comandos se registren
+            await asyncio.sleep(2)
+            
+            # Verificar comandos registrados
+            commands_before = len(self.bot.tree.get_commands())
+            print(f'[ADMIN] Comandos registrados en el tree: {commands_before}')
+            
+            # Sincronizar comandos
+            synced = await self.bot.tree.sync(guild=guild)
+            
+            embed = discord.Embed(
+                title='✅ **Restauración Forzada Completada**',
+                description=f'Se han restaurado {len(synced)} comandos correctamente.',
+                color=discord.Color.green(),
+                timestamp=datetime.now()
+            )
+            
+            # Listar comandos restaurados
+            command_list = []
+            for cmd in synced[:10]:  # Mostrar solo los primeros 10
+                command_list.append(f"• `/{cmd.name}`: {cmd.description}")
+            
+            if command_list:
+                embed.add_field(
+                    name='📋 Comandos Restaurados',
+                    value='\n'.join(command_list),
+                    inline=False
+                )
+            
+            if len(synced) > 10:
+                embed.add_field(
+                    name='📝 Nota',
+                    value=f'Y {len(synced) - 10} comandos más...',
+                    inline=False
+                )
+            
+            embed.add_field(
+                name='🔄 Extensiones Recargadas',
+                value=f'{len(reloaded_extensions)} extensiones',
+                inline=True
+            )
+            
+            embed.add_field(
+                name='📊 Comandos en Tree',
+                value=f'{commands_before} comandos',
+                inline=True
+            )
+            
+            embed.add_field(
+                name='📊 Comandos Sincronizados',
+                value=f'{len(synced)} comandos',
+                inline=True
+            )
+            
+            embed.set_footer(text=f'Restauración forzada por {interaction.user.display_name}')
+            
+            await interaction.followup.send(embed=embed, ephemeral=True)
+            print(f'[ADMIN] Restauración forzada completada por {interaction.user}: {len(synced)} comandos')
+
+        except Exception as e:
+            await interaction.followup.send(
+                f'❌ **Error en restauración forzada**\n\n```{str(e)}```',
+                ephemeral=True
+            )
+            print(f'[ADMIN] Error en restauración forzada: {e}')
 
     @app_commands.guilds(discord.Object(id=int(config.GUILD_ID)))
     @app_commands.command(name='bot_status', description='📊 Muestra el estado actual del bot (solo admins)')
