@@ -28,7 +28,9 @@ class LoggingCommands(commands.Cog):
             app_commands.Choice(name="status", value="status"),
             app_commands.Choice(name="set_level", value="set_level"),
             app_commands.Choice(name="test", value="test"),
-            app_commands.Choice(name="clear", value="clear")
+            app_commands.Choice(name="clear", value="clear"),
+            app_commands.Choice(name="resync", value="resync"),
+            app_commands.Choice(name="list_commands", value="list_commands")
         ],
         level=[
             app_commands.Choice(name="DEBUG", value="DEBUG"),
@@ -58,6 +60,10 @@ class LoggingCommands(commands.Cog):
                 await self.test_logging(interaction)
             elif action == "clear":
                 await self.clear_logs_channel(interaction)
+            elif action == "resync":
+                await self.resync_commands(interaction)
+            elif action == "list_commands":
+                await self.list_commands(interaction)
             else:
                 await interaction.response.send_message("❌ Acción no válida.", ephemeral=True)
                 
@@ -281,6 +287,106 @@ class LoggingCommands(commands.Cog):
             
         except Exception as e:
             await interaction.followup.send(f"❌ Error al limpiar el canal: {e}", ephemeral=True)
+
+    async def resync_commands(self, interaction: discord.Interaction):
+        """Resincronizar todos los comandos del bot"""
+        try:
+            embed = discord.Embed(
+                title="🔄 Resincronizando Comandos",
+                description="Limpiando y resincronizando todos los comandos...",
+                color=0xFF9900,
+                timestamp=discord.utils.utcnow()
+            )
+            
+            await interaction.response.send_message(embed=embed, ephemeral=True)
+            
+            # Limpiar todos los comandos del guild
+            if not config.GUILD_ID:
+                await interaction.followup.send("❌ GUILD_ID no está configurado.", ephemeral=True)
+                return
+                
+            guild = discord.Object(id=int(config.GUILD_ID))
+            self.bot.tree.clear_commands(guild=guild)
+            
+            # Resincronizar
+            synced = await self.bot.tree.sync(guild=guild)
+            
+            embed = discord.Embed(
+                title="✅ Comandos Resincronizados",
+                description=f"Se han resincronizado {len(synced)} comandos.",
+                color=0x00FF00,
+                timestamp=discord.utils.utcnow()
+            )
+            
+            embed.add_field(
+                name="📋 Comandos Sincronizados",
+                value="\n".join([f"• `/{cmd.name}`: {cmd.description}" for cmd in synced[:10]]),
+                inline=False
+            )
+            
+            if len(synced) > 10:
+                embed.add_field(
+                    name="📝 Nota",
+                    value=f"Y {len(synced) - 10} comandos más...",
+                    inline=False
+                )
+            
+            embed.set_footer(text="Sistema de Logging - CS-BOT")
+            
+            await interaction.followup.send(embed=embed, ephemeral=True)
+            
+            # Log del resync
+            logging.info(f"Comandos resincronizados por {interaction.user}. Total: {len(synced)}")
+            
+        except Exception as e:
+            await interaction.followup.send(f"❌ Error al resincronizar comandos: {e}", ephemeral=True)
+
+    async def list_commands(self, interaction: discord.Interaction):
+        """Listar todos los comandos registrados"""
+        try:
+            embed = discord.Embed(
+                title="📋 Comandos Registrados",
+                description="Lista de todos los comandos disponibles:",
+                color=0x0099FF,
+                timestamp=discord.utils.utcnow()
+            )
+            
+            # Obtener todos los comandos del tree
+            commands = self.bot.tree.get_commands()
+            
+            if not commands:
+                embed.add_field(
+                    name="❌ Sin Comandos",
+                    value="No se encontraron comandos registrados.",
+                    inline=False
+                )
+            else:
+                # Agrupar comandos por categoría
+                command_groups = {}
+                for cmd in commands:
+                    cog_name = cmd.binding.__cog_name__ if hasattr(cmd, 'binding') and cmd.binding else "Sin Categoría"
+                    if cog_name not in command_groups:
+                        command_groups[cog_name] = []
+                    command_groups[cog_name].append(cmd)
+                
+                for cog_name, cmds in command_groups.items():
+                    cmd_list = []
+                    for cmd in cmds:
+                        description = cmd.description or "Sin descripción"
+                        cmd_list.append(f"• `/{cmd.name}`: {description}")
+                    
+                    embed.add_field(
+                        name=f"📁 {cog_name}",
+                        value="\n".join(cmd_list),
+                        inline=False
+                    )
+            
+            embed.set_footer(text="Sistema de Logging - CS-BOT")
+            
+            await interaction.response.send_message(embed=embed, ephemeral=True)
+            
+        except Exception as e:
+            await interaction.response.send_message(f"❌ Error al listar comandos: {e}", ephemeral=True)
 
 async def setup(bot):
     await bot.add_cog(LoggingCommands(bot)) 

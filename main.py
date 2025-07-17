@@ -168,6 +168,9 @@ async def load_extensions():
             print(f"Extension cargada: {extension}")
         except Exception as e:
             print(f"Error al cargar extension {extension}: {e}")
+            # Log detallado del error
+            import traceback
+            print(f"Traceback completo: {traceback.format_exc()}")
 
 async def register_persistent_views():
     """Registrar views persistentes para botones que funcionen después de redeploy"""

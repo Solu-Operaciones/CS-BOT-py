@@ -215,6 +215,9 @@ Envía mensajes de prueba al canal de logs para verificar que el sistema funcion
 ### `/logging clear`
 Elimina los últimos 100 mensajes del canal de logs (solo mensajes del bot).
 
+### `/logging resync`
+Resincroniza todos los comandos del bot para solucionar problemas de duplicación.
+
 ## Consideraciones
 
 1. **Rate Limiting**: Discord tiene límites de rate, pero el sistema está optimizado para evitarlos
