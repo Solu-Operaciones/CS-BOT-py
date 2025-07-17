@@ -137,8 +137,8 @@ class AdminCommands(commands.Cog):
             try:
                 if config.GUILD_ID:
                     guild = discord.Object(id=int(config.GUILD_ID))
-                    # Limpiar comandos existentes
-                    self.bot.tree.clear_commands(guild=guild)
+                    # NO limpiar comandos existentes - solo sincronizar
+                    # self.bot.tree.clear_commands(guild=guild)  # COMENTADO PARA EVITAR BORRAR COMANDOS
                     # Sincronizar comandos
                     synced = await self.bot.tree.sync(guild=guild)
                     print(f'[ADMIN] Comandos resincronizados: {len(synced)} comandos')
@@ -212,8 +212,8 @@ class AdminCommands(commands.Cog):
                 
             guild = discord.Object(id=int(config.GUILD_ID))
             
-            # Limpiar comandos existentes
-            self.bot.tree.clear_commands(guild=guild)
+            # NO limpiar comandos existentes - solo sincronizar
+            # self.bot.tree.clear_commands(guild=guild)  # COMENTADO PARA EVITAR BORRAR COMANDOS
             
             # Sincronizar comandos
             synced = await self.bot.tree.sync(guild=guild)
@@ -255,6 +255,98 @@ class AdminCommands(commands.Cog):
                 ephemeral=True
             )
             print(f'[ADMIN] Error sincronizando comandos: {e}')
+
+    @app_commands.guilds(discord.Object(id=int(config.GUILD_ID)))
+    @app_commands.command(name='restore_commands', description='🔄 Restaura todos los comandos del bot (solo admins)')
+    async def restore_commands(self, interaction: discord.Interaction):
+        """Comando para restaurar todos los comandos perdidos"""
+        
+        # Verificar permisos de administrador o usuario autorizado
+        if not interaction.user.guild_permissions.administrator and str(interaction.user.id) not in config.SETUP_USER_IDS:
+            await interaction.response.send_message(
+                '❌ **Acceso denegado**\n\n'
+                'Solo los administradores o usuarios autorizados pueden usar este comando.',
+                ephemeral=True
+            )
+            return
+
+        try:
+            await interaction.response.defer(thinking=True)
+            
+            if not config.GUILD_ID:
+                await interaction.followup.send("❌ GUILD_ID no está configurado.", ephemeral=True)
+                return
+                
+            guild = discord.Object(id=int(config.GUILD_ID))
+            
+            # Recargar todas las extensiones para asegurar que todos los comandos estén registrados
+            extensions_to_reload = [
+                'events.interaction_commands',
+                'events.interaction_selects',
+                'events.attachment_handler',
+                'events.admin_commands',
+                'events.logging_commands',
+                'interactions.modals',
+                'interactions.select_menus',
+                'tasks.panel'
+            ]
+            
+            reloaded_extensions = []
+            for extension in extensions_to_reload:
+                try:
+                    await self.bot.reload_extension(extension)
+                    reloaded_extensions.append(extension)
+                    print(f'[ADMIN] Extension recargada: {extension}')
+                except Exception as e:
+                    print(f'[ADMIN] Error recargando {extension}: {e}')
+            
+            # Limpiar comandos existentes y sincronizar todos los nuevos
+            self.bot.tree.clear_commands(guild=guild)
+            synced = await self.bot.tree.sync(guild=guild)
+            
+            embed = discord.Embed(
+                title='✅ **Comandos Restaurados**',
+                description=f'Se han restaurado {len(synced)} comandos correctamente.',
+                color=discord.Color.green(),
+                timestamp=datetime.now()
+            )
+            
+            # Listar comandos restaurados
+            command_list = []
+            for cmd in synced[:15]:  # Mostrar solo los primeros 15
+                command_list.append(f"• `/{cmd.name}`: {cmd.description}")
+            
+            if command_list:
+                embed.add_field(
+                    name='📋 Comandos Restaurados',
+                    value='\n'.join(command_list),
+                    inline=False
+                )
+            
+            if len(synced) > 15:
+                embed.add_field(
+                    name='📝 Nota',
+                    value=f'Y {len(synced) - 15} comandos más...',
+                    inline=False
+                )
+            
+            embed.add_field(
+                name='🔄 Extensiones Recargadas',
+                value=f'{len(reloaded_extensions)} extensiones recargadas',
+                inline=True
+            )
+            
+            embed.set_footer(text=f'Restaurado por {interaction.user.display_name}')
+            
+            await interaction.followup.send(embed=embed, ephemeral=True)
+            print(f'[ADMIN] Comandos restaurados por {interaction.user}: {len(synced)} comandos')
+
+        except Exception as e:
+            await interaction.followup.send(
+                f'❌ **Error al restaurar comandos**\n\n```{str(e)}```',
+                ephemeral=True
+            )
+            print(f'[ADMIN] Error restaurando comandos: {e}')
 
     @app_commands.guilds(discord.Object(id=int(config.GUILD_ID)))
     @app_commands.command(name='bot_status', description='📊 Muestra el estado actual del bot (solo admins)')

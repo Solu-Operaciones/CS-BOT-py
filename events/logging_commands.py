@@ -293,20 +293,20 @@ class LoggingCommands(commands.Cog):
         try:
             embed = discord.Embed(
                 title="🔄 Resincronizando Comandos",
-                description="Limpiando y resincronizando todos los comandos...",
+                description="Sincronizando todos los comandos...",
                 color=0xFF9900,
                 timestamp=discord.utils.utcnow()
             )
             
             await interaction.response.send_message(embed=embed, ephemeral=True)
             
-            # Limpiar todos los comandos del guild
+            # NO limpiar comandos existentes - solo sincronizar
             if not config.GUILD_ID:
                 await interaction.followup.send("❌ GUILD_ID no está configurado.", ephemeral=True)
                 return
                 
             guild = discord.Object(id=int(config.GUILD_ID))
-            self.bot.tree.clear_commands(guild=guild)
+            # self.bot.tree.clear_commands(guild=guild)  # COMENTADO PARA EVITAR BORRAR COMANDOS
             
             # Resincronizar
             synced = await self.bot.tree.sync(guild=guild)
