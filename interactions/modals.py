@@ -737,7 +737,7 @@ class ReembolsoModal(discord.ui.Modal, title='Detalles del Reembolso'):
             custom_id="reembolsoZREInput",
             style=discord.TextStyle.short,
             required=True,
-            max_length=10
+            max_length=20
         )
         self.tarjeta = discord.ui.TextInput(
             label="Tarjeta",
