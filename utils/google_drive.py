@@ -49,6 +49,8 @@ def find_or_create_drive_folder(drive_service, parent_id: str, folder_name: str)
             return files[0]['id']
         else:
             print(f"Carpeta de Drive '{folder_name}' no encontrada. Creando...")
+            # Delay antes de crear carpeta para evitar rate limiting
+            time.sleep(1)
             file_metadata: dict = {
                 'name': folder_name,
                 'mimeType': 'application/vnd.google-apps.folder',
@@ -62,6 +64,11 @@ def find_or_create_drive_folder(drive_service, parent_id: str, folder_name: str)
         print(f"Error al buscar o crear la carpeta '{folder_name}' en Drive:", error)
         raise
 
+import time
+
+# Delays implementados para evitar rate limiting en Google Drive API
+# Sugerido por el jefe basado en experiencia previa con el bot anterior
+
 def upload_file_to_drive(drive_service, folder_id: str, attachment) -> dict:
     """
     Descarga un archivo desde una URL y lo sube a Google Drive.
@@ -73,6 +80,8 @@ def upload_file_to_drive(drive_service, folder_id: str, attachment) -> dict:
     if not drive_service or not folder_id or not attachment or not getattr(attachment, 'url', None) or not getattr(attachment, 'filename', None):
         raise ValueError("upload_file_to_drive: Parámetros incompletos.")
     try:
+        # Delay de 1 segundo para evitar rate limiting (como sugirió el jefe)
+        time.sleep(1)
         # Verificar que la carpeta existe y tenemos permisos
         try:
             folder_info = drive_service.files().get(fileId=folder_id, fields='id,name,permissions').execute()

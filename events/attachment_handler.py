@@ -190,6 +190,10 @@ class AttachmentHandler(commands.Cog):
                         if hasattr(upload_file_to_drive, 'debug_info') and upload_file_to_drive.debug_info:
                             debug_message = f"{upload_file_to_drive.debug_info}\n\n"
                             upload_file_to_drive.debug_info = ""  # Limpiar después de mostrar
+                        
+                        # Delay adicional entre archivos para mayor seguridad
+                        import asyncio
+                        await asyncio.sleep(0.5)
                             
                     except Exception as upload_error:
                         # Mostrar error detallado en Discord
