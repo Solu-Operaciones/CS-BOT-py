@@ -72,10 +72,28 @@ def find_or_create_drive_folder(drive_service, parent_id: str, folder_name: str)
             if parent_id:
                 file_metadata['parents'] = [parent_id]
                 print(f"🔍 DEBUG - Metadata con parent: {file_metadata}")
+                # Forzar creación en Shared Drive especificando el driveId
+                try:
+                    # Obtener el driveId del parent
+                    parent_info = drive_service.files().get(fileId=parent_id, fields='driveId').execute()
+                    parent_drive_id = parent_info.get('driveId')
+                    if parent_drive_id:
+                        print(f"🔍 DEBUG - Forzando creación en Shared Drive ID: {parent_drive_id}")
+                        # Usar supportsAllDrives para forzar creación en Shared Drive
+                        file = drive_service.files().create(
+                            body=file_metadata, 
+                            fields='id, name, parents, driveId',
+                            supportsAllDrives=True
+                        ).execute()
+                    else:
+                        print("⚠️ No se pudo obtener driveId del parent, creando normalmente")
+                        file = drive_service.files().create(body=file_metadata, fields='id, name, parents, driveId').execute()
+                except Exception as drive_error:
+                    print(f"⚠️ Error obteniendo driveId, creando normalmente: {drive_error}")
+                    file = drive_service.files().create(body=file_metadata, fields='id, name, parents, driveId').execute()
             else:
                 print(f"🔍 DEBUG - Metadata sin parent: {file_metadata}")
-            
-            file = drive_service.files().create(body=file_metadata, fields='id, name, parents').execute()
+                file = drive_service.files().create(body=file_metadata, fields='id, name, parents, driveId').execute()
             print(f"✅ Carpeta de Drive '{folder_name}' creada con ID: {file['id']}")
             print(f"🔍 DEBUG - Carpeta creada - ID: {file.get('id')}, Name: {file.get('name')}, Parents: {file.get('parents')}")
             
