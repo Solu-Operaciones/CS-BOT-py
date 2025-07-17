@@ -477,6 +477,114 @@ class AdminCommands(commands.Cog):
             print(f'[ADMIN] Error en restauración forzada: {e}')
 
     @app_commands.guilds(discord.Object(id=int(config.GUILD_ID)))
+    @app_commands.command(name='clean_duplicates', description='🧹 Limpia comandos duplicados y verifica estado (solo admins)')
+    async def clean_duplicates(self, interaction: discord.Interaction):
+        """Comando para limpiar comandos duplicados y verificar estado"""
+        
+        # Verificar permisos de administrador o usuario autorizado
+        if not interaction.user.guild_permissions.administrator and str(interaction.user.id) not in config.SETUP_USER_IDS:
+            await interaction.response.send_message(
+                '❌ **Acceso denegado**\n\n'
+                'Solo los administradores o usuarios autorizados pueden usar este comando.',
+                ephemeral=True
+            )
+            return
+
+        try:
+            await interaction.response.defer(thinking=True)
+            
+            if not config.GUILD_ID:
+                await interaction.followup.send("❌ GUILD_ID no está configurado.", ephemeral=True)
+                return
+                
+            guild = discord.Object(id=int(config.GUILD_ID))
+            
+            # Obtener comandos actuales
+            current_commands = self.bot.tree.get_commands()
+            command_names = [cmd.name for cmd in current_commands]
+            
+            # Encontrar duplicados
+            duplicates = []
+            seen = set()
+            for name in command_names:
+                if name in seen:
+                    duplicates.append(name)
+                else:
+                    seen.add(name)
+            
+            # Crear embed de análisis
+            embed = discord.Embed(
+                title='🔍 **Análisis de Comandos**',
+                description='Estado actual de los comandos del bot',
+                color=discord.Color.blue(),
+                timestamp=datetime.now()
+            )
+            
+            embed.add_field(
+                name='📊 Total de Comandos',
+                value=f'{len(current_commands)} comandos registrados',
+                inline=True
+            )
+            
+            embed.add_field(
+                name='🔄 Comandos Únicos',
+                value=f'{len(seen)} comandos únicos',
+                inline=True
+            )
+            
+            if duplicates:
+                embed.add_field(
+                    name='⚠️ Comandos Duplicados',
+                    value=f'{len(duplicates)} duplicados: {", ".join(duplicates)}',
+                    inline=False
+                )
+                embed.color = discord.Color.orange()
+            else:
+                embed.add_field(
+                    name='✅ Estado',
+                    value='No se encontraron duplicados',
+                    inline=False
+                )
+                embed.color = discord.Color.green()
+            
+            # Listar todos los comandos
+            command_list = []
+            for cmd in current_commands:
+                status = "🔄" if cmd.name in duplicates else "✅"
+                command_list.append(f"{status} `/{cmd.name}`: {cmd.description}")
+            
+            # Dividir en chunks si hay muchos comandos
+            if len(command_list) > 15:
+                embed.add_field(
+                    name='📋 Comandos Registrados (Primeros 15)',
+                    value='\n'.join(command_list[:15]),
+                    inline=False
+                )
+                embed.add_field(
+                    name='📝 Resto de Comandos',
+                    value='\n'.join(command_list[15:]),
+                    inline=False
+                )
+            else:
+                embed.add_field(
+                    name='📋 Comandos Registrados',
+                    value='\n'.join(command_list),
+                    inline=False
+                )
+            
+            embed.set_footer(text=f'Análisis por {interaction.user.display_name}')
+            
+            await interaction.followup.send(embed=embed, ephemeral=True)
+            print(f'[ADMIN] Análisis de comandos completado por {interaction.user}: {len(current_commands)} comandos, {len(duplicates)} duplicados')
+
+        except Exception as e:
+            await interaction.followup.send(
+                f'❌ **Error al analizar comandos**\n\n```{str(e)}```',
+                ephemeral=True
+            )
+            print(f'[ADMIN] Error analizando comandos: {e}')
+
+    @app_commands.guilds(discord.Object(id=int(config.GUILD_ID)))
     @app_commands.command(name='bot_status', description='📊 Muestra el estado actual del bot (solo admins)')
     async def status_command(self, interaction: discord.Interaction):
         """Comando para mostrar el estado del bot"""
