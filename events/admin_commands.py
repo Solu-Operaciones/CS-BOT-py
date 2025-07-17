@@ -118,6 +118,7 @@ class AdminCommands(commands.Cog):
                     'events.interaction_commands',
                     'events.interaction_selects',
                     'events.attachment_handler',
+                    'events.logging_commands',
                     'interactions.modals',
                     'interactions.select_menus',
                     'tasks.panel'
@@ -131,6 +132,20 @@ class AdminCommands(commands.Cog):
                         print(f'[ADMIN] Error recargando {extension}: {e}')
             except Exception as e:
                 print(f'[ADMIN] Error recargando extensiones: {e}')
+
+            # 7. Resincronizar comandos para evitar duplicados
+            try:
+                if config.GUILD_ID:
+                    guild = discord.Object(id=int(config.GUILD_ID))
+                    # Limpiar comandos existentes
+                    self.bot.tree.clear_commands(guild=guild)
+                    # Sincronizar comandos
+                    synced = await self.bot.tree.sync(guild=guild)
+                    print(f'[ADMIN] Comandos resincronizados: {len(synced)} comandos')
+                else:
+                    print('[ADMIN] No se pudieron resincronizar comandos - GUILD_ID no configurado')
+            except Exception as e:
+                print(f'[ADMIN] Error resincronizando comandos: {e}')
 
             # Actualizar timestamp del último reset
             self.last_reset = datetime.now()
@@ -173,6 +188,73 @@ class AdminCommands(commands.Cog):
             await interaction.followup.send(error_msg, ephemeral=True)
             print(f'[ADMIN] Error durante reset: {e}')
             print(f'[ADMIN] Traceback: {traceback.format_exc()}')
+
+    @app_commands.guilds(discord.Object(id=int(config.GUILD_ID)))
+    @app_commands.command(name='sync_commands', description='🔄 Sincroniza todos los comandos del bot (solo admins)')
+    async def sync_commands(self, interaction: discord.Interaction):
+        """Comando para sincronizar todos los comandos"""
+        
+        # Verificar permisos de administrador o usuario autorizado
+        if not interaction.user.guild_permissions.administrator and str(interaction.user.id) not in config.SETUP_USER_IDS:
+            await interaction.response.send_message(
+                '❌ **Acceso denegado**\n\n'
+                'Solo los administradores o usuarios autorizados pueden usar este comando.',
+                ephemeral=True
+            )
+            return
+
+        try:
+            await interaction.response.defer(thinking=True)
+            
+            if not config.GUILD_ID:
+                await interaction.followup.send("❌ GUILD_ID no está configurado.", ephemeral=True)
+                return
+                
+            guild = discord.Object(id=int(config.GUILD_ID))
+            
+            # Limpiar comandos existentes
+            self.bot.tree.clear_commands(guild=guild)
+            
+            # Sincronizar comandos
+            synced = await self.bot.tree.sync(guild=guild)
+            
+            embed = discord.Embed(
+                title='✅ **Comandos Sincronizados**',
+                description=f'Se han sincronizado {len(synced)} comandos correctamente.',
+                color=discord.Color.green(),
+                timestamp=datetime.now()
+            )
+            
+            # Listar comandos sincronizados
+            command_list = []
+            for cmd in synced[:15]:  # Mostrar solo los primeros 15
+                command_list.append(f"• `/{cmd.name}`: {cmd.description}")
+            
+            if command_list:
+                embed.add_field(
+                    name='📋 Comandos Sincronizados',
+                    value='\n'.join(command_list),
+                    inline=False
+                )
+            
+            if len(synced) > 15:
+                embed.add_field(
+                    name='📝 Nota',
+                    value=f'Y {len(synced) - 15} comandos más...',
+                    inline=False
+                )
+            
+            embed.set_footer(text=f'Sincronizado por {interaction.user.display_name}')
+            
+            await interaction.followup.send(embed=embed, ephemeral=True)
+            print(f'[ADMIN] Comandos sincronizados por {interaction.user}: {len(synced)} comandos')
+
+        except Exception as e:
+            await interaction.followup.send(
+                f'❌ **Error al sincronizar comandos**\n\n```{str(e)}```',
+                ephemeral=True
+            )
+            print(f'[ADMIN] Error sincronizando comandos: {e}')
 
     @app_commands.guilds(discord.Object(id=int(config.GUILD_ID)))
     @app_commands.command(name='bot_status', description='📊 Muestra el estado actual del bot (solo admins)')
