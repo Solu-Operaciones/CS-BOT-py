@@ -89,18 +89,12 @@ def upload_file_to_drive(drive_service, folder_id: str, attachment) -> dict:
                 role = perm.get('role', 'Sin rol')
                 debug_info += f"   • {email}: {role}\n"
             
-            # Guardar debug_info para que se pueda mostrar en Discord
-            import config
-            if not hasattr(config, 'last_debug_info'):
-                config.last_debug_info = ""
-            config.last_debug_info = debug_info
+            # Guardar debug_info en una variable global simple
+            upload_file_to_drive.debug_info = debug_info
                 
         except Exception as folder_error:
             error_msg = f"❌ **Error verificando carpeta:** {folder_error}"
-            import config
-            if not hasattr(config, 'last_debug_info'):
-                config.last_debug_info = ""
-            config.last_debug_info = error_msg
+            upload_file_to_drive.debug_info = error_msg
             raise Exception(f"No se puede acceder a la carpeta {folder_id}: {folder_error}")
         
         print(f"Intentando descargar archivo: {attachment.filename} desde {attachment.url}")

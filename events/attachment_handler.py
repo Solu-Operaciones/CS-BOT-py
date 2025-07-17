@@ -181,20 +181,26 @@ class AttachmentHandler(commands.Cog):
                 uploaded_files = []
                 debug_message = ""
                 
-                # Mostrar información de debug si está disponible
-                import config
-                if hasattr(config, 'last_debug_info') and config.last_debug_info:
-                    debug_message = f"{config.last_debug_info}\n\n"
-                    config.last_debug_info = ""  # Limpiar después de mostrar
-                
                 for attachment in message.attachments:
                     try:
                         uploaded = upload_file_to_drive(drive_service, folder_id, attachment)
                         uploaded_files.append(uploaded)
+                        
+                        # Mostrar información de debug si está disponible
+                        if hasattr(upload_file_to_drive, 'debug_info') and upload_file_to_drive.debug_info:
+                            debug_message = f"{upload_file_to_drive.debug_info}\n\n"
+                            upload_file_to_drive.debug_info = ""  # Limpiar después de mostrar
+                            
                     except Exception as upload_error:
                         # Mostrar error detallado en Discord
                         error_details = f"❌ **Error al subir {attachment.filename}:**\n{str(upload_error)}"
-                        await message.reply(f"{debug_message}{error_details}")
+                        
+                        # Agregar debug info si está disponible
+                        if hasattr(upload_file_to_drive, 'debug_info') and upload_file_to_drive.debug_info:
+                            error_details = f"{upload_file_to_drive.debug_info}\n\n{error_details}"
+                            upload_file_to_drive.debug_info = ""
+                        
+                        await message.reply(error_details)
                         return
                 
                 # Confirmar al usuario
