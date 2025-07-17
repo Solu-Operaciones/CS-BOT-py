@@ -1204,32 +1204,25 @@ class PiezaFaltanteModal(discord.ui.Modal, title='Registrar Pieza Faltante'):
             now = datetime.now(tz)
             fecha_hora = now.strftime('%d-%m-%Y %H:%M:%S')
             agente_name = interaction.user.display_name
+            # Armar la fila en el orden esperado según la hoja (igual que CasoModal)
+            row_data = [
+                agente_name,               # A - Agente
+                pedido,                    # B - Número de pedido
+                id_wise,                   # C - ID WISE
+                fecha_hora,                # D - Fecha de envío del form
+                pieza,                     # E - Pieza faltante
+                sku,                       # F - SKU del producto
+                observaciones,             # G - Observaciones
+                '',                        # H - ERROR
+                ''                         # I - ErrorEnvioCheck
+            ]
+            
+            # Ajustar la cantidad de columnas al header (igual que CasoModal)
             header = rows[0] if rows else []
-            
-            # Función para normalizar nombres de columnas
-            def normaliza_columna(nombre):
-                if not nombre:
-                    return ''
-                return str(nombre).strip().replace('\u200b', '').replace('\ufeff', '').lower()
-            
-            # Obtener índices de columnas por nombre
-            pedido_col = next((i for i, h in enumerate(header) if normaliza_columna(h) == 'número de pedido'), 0)
-            wise_col = next((i for i, h in enumerate(header) if normaliza_columna(h) == 'id wise'), 1)
-            pieza_col = next((i for i, h in enumerate(header) if normaliza_columna(h) == 'pieza faltante'), 2)
-            sku_col = next((i for i, h in enumerate(header) if normaliza_columna(h) == 'sku del producto'), 3)
-            fecha_col = next((i for i, h in enumerate(header) if normaliza_columna(h) == 'Fecha de envío del form'), 4)
-            agente_col = next((i for i, h in enumerate(header) if normaliza_columna(h) == 'agente'), 5)
-            obs_col = next((i for i, h in enumerate(header) if normaliza_columna(h) == 'observaciones'), 6)
-            
-            # Crear fila con datos en las posiciones correctas
-            row_data = [''] * len(header)
-            row_data[pedido_col] = pedido
-            row_data[wise_col] = id_wise
-            row_data[pieza_col] = pieza
-            row_data[sku_col] = sku
-            row_data[fecha_col] = fecha_hora
-            row_data[agente_col] = agente_name
-            row_data[obs_col] = observaciones
+            if len(row_data) < len(header):
+                row_data.extend([''] * (len(header) - len(row_data)))
+            elif len(row_data) > len(header):
+                row_data = row_data[:len(header)]
             
             sheet.append_row(row_data)
             confirmation_message = f"""✅ **Pieza faltante registrada exitosamente**\n\n📋 **Detalles:**\n• **N° de Pedido:** {pedido}\n• **ID Wise:** {id_wise}\n• **Pieza faltante:** {pieza}\n• **SKU:** {sku}\n• **Fecha:** {fecha_hora}\n"""
