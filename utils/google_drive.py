@@ -78,25 +78,14 @@ def find_or_create_drive_folder(drive_service, parent_id: str, folder_name: str)
                     parent_info = drive_service.files().get(fileId=parent_id, fields='driveId,parents').execute()
                     parent_drive_id = parent_info.get('driveId')
                     
-                    # Si no tiene driveId, buscar en los parents
+                    # Si no tiene driveId, buscar en los parents recursivamente
                     if not parent_drive_id:
                         print("🔍 DEBUG - Parent no es Shared Drive, buscando Shared Drive en parents...")
-                        parent_parents = parent_info.get('parents', [])
-                        print(f"🔍 DEBUG - Parents encontrados: {parent_parents}")
-                        
-                        for i, parent_parent_id in enumerate(parent_parents):
-                            print(f"🔍 DEBUG - Verificando parent {i+1}: {parent_parent_id}")
-                            try:
-                                parent_parent_info = drive_service.files().get(fileId=parent_parent_id, fields='driveId,name').execute()
-                                parent_drive_id = parent_parent_info.get('driveId')
-                                parent_name = parent_parent_info.get('name', 'Sin nombre')
-                                print(f"🔍 DEBUG - Parent {i+1} - Name: {parent_name}, Drive ID: {parent_drive_id}")
-                                if parent_drive_id:
-                                    print(f"🔍 DEBUG - Encontrada Shared Drive en parent: {parent_drive_id}")
-                                    break
-                            except Exception as parent_error:
-                                print(f"🔍 DEBUG - Error verificando parent {i+1}: {parent_error}")
-                                continue
+                        parent_drive_id = find_shared_drive_recursive(drive_service, parent_id, max_depth=5)
+                        if parent_drive_id:
+                            print(f"🔍 DEBUG - Encontrada Shared Drive recursivamente: {parent_drive_id}")
+                        else:
+                            print("🔍 DEBUG - No se encontró Shared Drive en la jerarquía")
                     
                     if parent_drive_id:
                         print(f"🔍 DEBUG - Forzando creación en Shared Drive ID: {parent_drive_id}")
@@ -246,6 +235,46 @@ def download_file_from_drive(drive_service, file_id: str) -> bytes:
     except Exception as error:
         print(f"Error al descargar el archivo {file_id} de Drive:", error)
         raise
+
+def find_shared_drive_recursive(drive_service, folder_id: str, max_depth: int = 5, current_depth: int = 0) -> str | None:
+    """
+    Busca recursivamente una Shared Drive en la jerarquía de carpetas.
+    :param drive_service: Instancia de Google Drive API
+    :param folder_id: ID de la carpeta a verificar
+    :param max_depth: Profundidad máxima de búsqueda
+    :param current_depth: Profundidad actual
+    :return: ID de la Shared Drive si se encuentra, None si no
+    """
+    if current_depth >= max_depth:
+        print(f"🔍 DEBUG - Profundidad máxima alcanzada ({max_depth})")
+        return None
+    
+    try:
+        print(f"🔍 DEBUG - Verificando nivel {current_depth + 1}: {folder_id}")
+        folder_info = drive_service.files().get(fileId=folder_id, fields='driveId,name,parents').execute()
+        
+        drive_id = folder_info.get('driveId')
+        folder_name = folder_info.get('name', 'Sin nombre')
+        parents = folder_info.get('parents', [])
+        
+        print(f"🔍 DEBUG - Nivel {current_depth + 1} - Name: {folder_name}, Drive ID: {drive_id}")
+        
+        # Si encontramos una Shared Drive, retornarla
+        if drive_id:
+            print(f"🔍 DEBUG - ¡Shared Drive encontrada en nivel {current_depth + 1}!")
+            return drive_id
+        
+        # Si no es Shared Drive, buscar en los parents
+        for parent_id in parents:
+            result = find_shared_drive_recursive(drive_service, parent_id, max_depth, current_depth + 1)
+            if result:
+                return result
+        
+        return None
+        
+    except Exception as error:
+        print(f"🔍 DEBUG - Error verificando nivel {current_depth + 1}: {error}")
+        return None
 
 def funcion_google_drive():
     pass
