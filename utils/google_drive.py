@@ -82,14 +82,20 @@ def find_or_create_drive_folder(drive_service, parent_id: str, folder_name: str)
                     if not parent_drive_id:
                         print("🔍 DEBUG - Parent no es Shared Drive, buscando Shared Drive en parents...")
                         parent_parents = parent_info.get('parents', [])
-                        for parent_parent_id in parent_parents:
+                        print(f"🔍 DEBUG - Parents encontrados: {parent_parents}")
+                        
+                        for i, parent_parent_id in enumerate(parent_parents):
+                            print(f"🔍 DEBUG - Verificando parent {i+1}: {parent_parent_id}")
                             try:
-                                parent_parent_info = drive_service.files().get(fileId=parent_parent_id, fields='driveId').execute()
+                                parent_parent_info = drive_service.files().get(fileId=parent_parent_id, fields='driveId,name').execute()
                                 parent_drive_id = parent_parent_info.get('driveId')
+                                parent_name = parent_parent_info.get('name', 'Sin nombre')
+                                print(f"🔍 DEBUG - Parent {i+1} - Name: {parent_name}, Drive ID: {parent_drive_id}")
                                 if parent_drive_id:
                                     print(f"🔍 DEBUG - Encontrada Shared Drive en parent: {parent_drive_id}")
                                     break
-                            except:
+                            except Exception as parent_error:
+                                print(f"🔍 DEBUG - Error verificando parent {i+1}: {parent_error}")
                                 continue
                     
                     if parent_drive_id:

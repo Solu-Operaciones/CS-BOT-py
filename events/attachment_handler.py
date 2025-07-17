@@ -178,12 +178,17 @@ class AttachmentHandler(commands.Cog):
                 else:
                     print(f"✅ PARENT_DRIVE_FOLDER_ID configurado: '{parent_folder_id}'")
                 
+                # Opción 1: Crear carpeta específica para el pedido
                 folder_name = f'FacturaA_{pedido}'
                 print(f"🔍 DEBUG - Nombre de carpeta a crear: '{folder_name}'")
                 print(f"🔍 DEBUG - Llamando find_or_create_drive_folder con parent_id: '{parent_folder_id}'")
                 
                 folder_id = find_or_create_drive_folder(drive_service, parent_folder_id or "", folder_name)
                 print(f"🔍 DEBUG - ID de carpeta retornado: '{folder_id}'")
+                
+                # Opción 2: Usar directamente la carpeta "Adjuntos solicitudes" (comentado por ahora)
+                # folder_id = parent_folder_id
+                # print(f"🔍 DEBUG - Usando carpeta padre directamente: '{folder_id}'")
                 
                 # Subir cada adjunto
                 uploaded_files = []
