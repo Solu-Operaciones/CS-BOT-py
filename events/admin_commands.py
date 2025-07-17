@@ -562,23 +562,50 @@ class AdminCommands(commands.Cog):
                 )
                 embed.color = discord.Color.green()
             
-            # Listar comandos sincronizados
-            command_list = []
-            for cmd in synced_commands:
-                status = "🔄" if cmd.name in duplicates else "✅"
-                command_list.append(f"{status} `/{cmd.name}`: {cmd.description}")
-            
-            # Dividir la lista en chunks de máximo 15 comandos por campo
-            chunk_size = 15
-            command_chunks = [command_list[i:i + chunk_size] for i in range(0, len(command_list), chunk_size)]
-            
-            for i, chunk in enumerate(command_chunks):
-                field_name = f'📋 Comandos Sincronizados (Parte {i+1})' if len(command_chunks) > 1 else '📋 Comandos Sincronizados'
-                embed.add_field(
-                    name=field_name,
-                    value='\n'.join(chunk),
-                    inline=False
-                )
+            # Mostrar solo un resumen de comandos (sin descripciones largas)
+            if synced_commands:
+                # Agrupar comandos por categoría
+                command_categories = {}
+                for cmd in synced_commands:
+                    # Determinar categoría basada en el nombre
+                    if 'admin' in cmd.name or 'reset' in cmd.name or 'sync' in cmd.name or 'restore' in cmd.name or 'clean' in cmd.name:
+                        category = '🔧 Administración'
+                    elif 'logging' in cmd.name:
+                        category = '📝 Logging'
+                    elif 'factura' in cmd.name or 'tracking' in cmd.name or 'buscar' in cmd.name:
+                        category = '📋 Casos'
+                    elif 'panel' in cmd.name or 'setup' in cmd.name:
+                        category = '⚙️ Configuración'
+                    else:
+                        category = '🎯 Usuario'
+                    
+                    if category not in command_categories:
+                        command_categories[category] = []
+                    command_categories[category].append(cmd.name)
+                
+                # Mostrar resumen por categorías
+                for category, commands in command_categories.items():
+                    status_commands = []
+                    for cmd_name in commands:
+                        status = "🔄" if cmd_name in duplicates else "✅"
+                        status_commands.append(f"{status} `/{cmd_name}`")
+                    
+                    # Dividir en chunks si hay muchos comandos en una categoría
+                    if len(status_commands) > 8:
+                        chunks = [status_commands[i:i+8] for i in range(0, len(status_commands), 8)]
+                        for i, chunk in enumerate(chunks):
+                            field_name = f'{category} (Parte {i+1})' if len(chunks) > 1 else category
+                            embed.add_field(
+                                name=field_name,
+                                value=' '.join(chunk),
+                                inline=True
+                            )
+                    else:
+                        embed.add_field(
+                            name=category,
+                            value=' '.join(status_commands),
+                            inline=True
+                        )
             
             embed.set_footer(text=f'Análisis por {interaction.user.display_name}')
             
@@ -591,6 +618,112 @@ class AdminCommands(commands.Cog):
                 ephemeral=True
             )
             print(f'[ADMIN] Error analizando comandos: {e}')
+
+    @app_commands.guilds(discord.Object(id=int(config.GUILD_ID)))
+    @app_commands.command(name='debug_commands', description='🐛 Debug de comandos duplicados (solo admins)')
+    async def debug_commands(self, interaction: discord.Interaction):
+        """Comando para debug de comandos duplicados"""
+        
+        # Verificar permisos de administrador o usuario autorizado
+        if not interaction.user.guild_permissions.administrator and str(interaction.user.id) not in config.SETUP_USER_IDS:
+            await interaction.response.send_message(
+                '❌ **Acceso denegado**\n\n'
+                'Solo los administradores o usuarios autorizados pueden usar este comando.',
+                ephemeral=True
+            )
+            return
+
+        try:
+            await interaction.response.defer(thinking=True)
+            
+            if not config.GUILD_ID:
+                await interaction.followup.send("❌ GUILD_ID no está configurado.", ephemeral=True)
+                return
+                
+            guild = discord.Object(id=int(config.GUILD_ID))
+            
+            # Obtener comandos sincronizados
+            try:
+                synced_commands = await self.bot.tree.fetch_commands(guild=guild)
+            except Exception as e:
+                await interaction.followup.send(f"❌ Error obteniendo comandos: {e}", ephemeral=True)
+                return
+            
+            # Analizar duplicados
+            command_count = {}
+            for cmd in synced_commands:
+                if cmd.name in command_count:
+                    command_count[cmd.name] += 1
+                else:
+                    command_count[cmd.name] = 1
+            
+            # Encontrar duplicados
+            duplicates = {name: count for name, count in command_count.items() if count > 1}
+            
+            # Crear embed de debug
+            embed = discord.Embed(
+                title='🐛 **Debug de Comandos**',
+                description='Análisis detallado de comandos duplicados',
+                color=discord.Color.red() if duplicates else discord.Color.green(),
+                timestamp=datetime.now()
+            )
+            
+            embed.add_field(
+                name='📊 Total de Comandos',
+                value=f'{len(synced_commands)} comandos sincronizados',
+                inline=True
+            )
+            
+            embed.add_field(
+                name='🔄 Comandos Únicos',
+                value=f'{len(command_count)} comandos únicos',
+                inline=True
+            )
+            
+            embed.add_field(
+                name='⚠️ Comandos Duplicados',
+                value=f'{len(duplicates)} comandos con duplicados',
+                inline=True
+            )
+            
+            if duplicates:
+                # Mostrar detalles de duplicados
+                duplicate_details = []
+                for name, count in duplicates.items():
+                    duplicate_details.append(f"`/{name}`: {count} veces")
+                
+                embed.add_field(
+                    name='🔍 Detalles de Duplicados',
+                    value='\n'.join(duplicate_details),
+                    inline=False
+                )
+                
+                # Mostrar comandos únicos
+                unique_commands = [f"`/{name}`" for name in command_count.keys() if command_count[name] == 1]
+                if unique_commands:
+                    embed.add_field(
+                        name='✅ Comandos Únicos',
+                        value=' '.join(unique_commands[:10]) + ('...' if len(unique_commands) > 10 else ''),
+                        inline=False
+                    )
+            else:
+                embed.add_field(
+                    name='✅ Estado',
+                    value='No se encontraron duplicados',
+                    inline=False
+                )
+            
+            embed.set_footer(text=f'Debug por {interaction.user.display_name}')
+            
+            await interaction.followup.send(embed=embed, ephemeral=True)
+            print(f'[ADMIN] Debug de comandos completado por {interaction.user}: {len(duplicates)} duplicados encontrados')
+
+        except Exception as e:
+            await interaction.followup.send(
+                f'❌ **Error en debug**\n\n```{str(e)}```',
+                ephemeral=True
+            )
+            print(f'[ADMIN] Error en debug de comandos: {e}')
 
     @app_commands.guilds(discord.Object(id=int(config.GUILD_ID)))
     @app_commands.command(name='bot_status', description='📊 Muestra el estado actual del bot (solo admins)')
