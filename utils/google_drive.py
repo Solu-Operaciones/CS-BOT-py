@@ -78,6 +78,36 @@ def find_or_create_drive_folder(drive_service, parent_id: str, folder_name: str)
             file = drive_service.files().create(body=file_metadata, fields='id, name, parents').execute()
             print(f"✅ Carpeta de Drive '{folder_name}' creada con ID: {file['id']}")
             print(f"🔍 DEBUG - Carpeta creada - ID: {file.get('id')}, Name: {file.get('name')}, Parents: {file.get('parents')}")
+            
+            # Verificar permisos de la carpeta recién creada
+            try:
+                folder_permissions = drive_service.files().get(fileId=file['id'], fields='permissions,driveId').execute()
+                permissions = folder_permissions.get('permissions', [])
+                drive_id = folder_permissions.get('driveId')
+                print(f"🔍 DEBUG - Permisos de carpeta creada: {len(permissions)} encontrados")
+                print(f"🔍 DEBUG - Drive ID de la carpeta: {drive_id}")
+                for perm in permissions:
+                    email = perm.get('emailAddress', 'Sin email')
+                    role = perm.get('role', 'Sin rol')
+                    print(f"🔍 DEBUG - Permiso: {email} -> {role}")
+            except Exception as perm_error:
+                print(f"❌ Error verificando permisos de carpeta creada: {perm_error}")
+            
+            # Verificar que la carpeta está en la Shared Drive correcta
+            if parent_id and drive_id:
+                print(f"🔍 DEBUG - Verificando ubicación: Parent ID={parent_id}, Drive ID={drive_id}")
+                # Obtener información del parent para comparar
+                try:
+                    parent_info = drive_service.files().get(fileId=parent_id, fields='driveId').execute()
+                    parent_drive_id = parent_info.get('driveId')
+                    print(f"🔍 DEBUG - Parent Drive ID: {parent_drive_id}")
+                    if drive_id == parent_drive_id:
+                        print("✅ Carpeta creada en la misma Shared Drive que el parent")
+                    else:
+                        print("❌ ERROR: Carpeta creada en Drive diferente al parent")
+                except Exception as parent_error:
+                    print(f"❌ Error verificando parent: {parent_error}")
+            
             return file['id']
     except Exception as error:
         print(f"❌ Error al buscar o crear la carpeta '{folder_name}' en Drive:", error)
