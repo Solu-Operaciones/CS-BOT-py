@@ -499,14 +499,23 @@ class AdminCommands(commands.Cog):
                 
             guild = discord.Object(id=int(config.GUILD_ID))
             
-            # Obtener comandos actuales
-            current_commands = self.bot.tree.get_commands()
-            command_names = [cmd.name for cmd in current_commands]
+            # Obtener comandos del tree local
+            local_commands = self.bot.tree.get_commands()
+            local_command_names = [cmd.name for cmd in local_commands]
             
-            # Encontrar duplicados
+            # Obtener comandos sincronizados de Discord
+            try:
+                synced_commands = await self.bot.tree.fetch_commands(guild=guild)
+                synced_command_names = [cmd.name for cmd in synced_commands]
+            except Exception as e:
+                print(f'[ADMIN] Error obteniendo comandos sincronizados: {e}')
+                synced_commands = []
+                synced_command_names = []
+            
+            # Encontrar duplicados en comandos sincronizados
             duplicates = []
             seen = set()
-            for name in command_names:
+            for name in synced_command_names:
                 if name in seen:
                     duplicates.append(name)
                 else:
@@ -521,8 +530,14 @@ class AdminCommands(commands.Cog):
             )
             
             embed.add_field(
-                name='📊 Total de Comandos',
-                value=f'{len(current_commands)} comandos registrados',
+                name='📊 Comandos Locales',
+                value=f'{len(local_commands)} comandos en el tree',
+                inline=True
+            )
+            
+            embed.add_field(
+                name='📊 Comandos Sincronizados',
+                value=f'{len(synced_commands)} comandos en Discord',
                 inline=True
             )
             
@@ -547,16 +562,16 @@ class AdminCommands(commands.Cog):
                 )
                 embed.color = discord.Color.green()
             
-            # Listar todos los comandos
+            # Listar comandos sincronizados
             command_list = []
-            for cmd in current_commands:
+            for cmd in synced_commands:
                 status = "🔄" if cmd.name in duplicates else "✅"
                 command_list.append(f"{status} `/{cmd.name}`: {cmd.description}")
             
             # Dividir en chunks si hay muchos comandos
             if len(command_list) > 15:
                 embed.add_field(
-                    name='📋 Comandos Registrados (Primeros 15)',
+                    name='📋 Comandos Sincronizados (Primeros 15)',
                     value='\n'.join(command_list[:15]),
                     inline=False
                 )
@@ -567,7 +582,7 @@ class AdminCommands(commands.Cog):
                 )
             else:
                 embed.add_field(
-                    name='📋 Comandos Registrados',
+                    name='📋 Comandos Sincronizados',
                     value='\n'.join(command_list),
                     inline=False
                 )
@@ -575,7 +590,7 @@ class AdminCommands(commands.Cog):
             embed.set_footer(text=f'Análisis por {interaction.user.display_name}')
             
             await interaction.followup.send(embed=embed, ephemeral=True)
-            print(f'[ADMIN] Análisis de comandos completado por {interaction.user}: {len(current_commands)} comandos, {len(duplicates)} duplicados')
+            print(f'[ADMIN] Análisis de comandos completado por {interaction.user}: {len(synced_commands)} comandos sincronizados, {len(duplicates)} duplicados')
 
         except Exception as e:
             await interaction.followup.send(
