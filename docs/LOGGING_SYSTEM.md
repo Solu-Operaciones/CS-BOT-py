@@ -107,6 +107,20 @@ Si falla el envío a Discord, los mensajes se mantienen en la consola original.
 
 El sistema se limpia automáticamente cuando el bot se apaga.
 
+### 5. Filtrado Inteligente
+
+- **Loggers externos filtrados**: Discord, urllib3, Google APIs
+- **Mensajes de consola filtrados**: Comandos slash, mensajes de librerías
+- **Rate limiting**: Evita spam y rate limits de Discord
+
+### 6. Comandos de Control
+
+Comando `/logging` disponible para:
+- Ver estado del sistema
+- Cambiar nivel de logging
+- Probar el sistema
+- Limpiar canal de logs
+
 ## Manejadores de Errores Globales
 
 ### Eventos de Discord
@@ -177,9 +191,33 @@ async def procesar_solicitud_factura_a(bot, pedido, email):
 4. **Formato Organizado**: Los logs se presentan de forma clara y estructurada
 5. **Contexto Rico**: Incluye timestamps, niveles y contexto adicional
 
+## Comandos de Control
+
+### `/logging status`
+Muestra el estado actual del sistema de logging, incluyendo:
+- Canal de logs configurado
+- Nivel de logging actual
+- Estado del handler de Discord
+- Loggers filtrados
+
+### `/logging set_level <nivel>`
+Cambia el nivel de logging del sistema:
+- `DEBUG`: Todos los mensajes
+- `INFO`: Solo información y superior
+- `WARNING`: Solo advertencias y superior
+- `ERROR`: Solo errores y superior
+- `CRITICAL`: Solo errores críticos
+
+### `/logging test`
+Envía mensajes de prueba al canal de logs para verificar que el sistema funciona.
+
+### `/logging clear`
+Elimina los últimos 100 mensajes del canal de logs (solo mensajes del bot).
+
 ## Consideraciones
 
 1. **Rate Limiting**: Discord tiene límites de rate, pero el sistema está optimizado para evitarlos
 2. **Tamaño de Mensajes**: Los mensajes largos se dividen automáticamente
 3. **Dependencia del Bot**: Los logs solo se envían cuando el bot está conectado
-4. **Canal de Logs**: Asegúrate de que el canal tenga permisos adecuados para el bot 
+4. **Canal de Logs**: Asegúrate de que el canal tenga permisos adecuados para el bot
+5. **Filtrado**: Los mensajes de librerías externas se filtran automáticamente para reducir spam 

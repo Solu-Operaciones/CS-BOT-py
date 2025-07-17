@@ -17,6 +17,8 @@ class DiscordLogHandler(logging.Handler):
         self.buffer = []
         self.buffer_size = 10  # Enviar cada 10 mensajes
         self.max_message_length = 1900  # Límite de Discord menos margen
+        self.last_send_time = 0
+        self.min_interval = 1.0  # Mínimo 1 segundo entre mensajes
         
     def emit(self, record):
         """Emitir el log a Discord"""
@@ -34,6 +36,13 @@ class DiscordLogHandler(logging.Handler):
         """Enviar mensaje a Discord"""
         if not self.bot or not self.bot.is_ready():
             return
+            
+        # Rate limiting básico
+        import time
+        current_time = time.time()
+        if current_time - self.last_send_time < self.min_interval:
+            await asyncio.sleep(self.min_interval - (current_time - self.last_send_time))
+        self.last_send_time = time.time()
             
         try:
             channel = self.bot.get_channel(self.channel_id)
@@ -101,6 +110,8 @@ class DiscordConsoleRedirector:
         self.original_stderr = sys.stderr
         self.stdout_buffer = StringIO()
         self.stderr_buffer = StringIO()
+        self.last_send_time = 0
+        self.min_interval = 2.0  # Mínimo 2 segundos entre mensajes de consola
         
     def start(self):
         """Iniciar la redirección"""
@@ -118,8 +129,19 @@ class DiscordConsoleRedirector:
             # Escribir al buffer original para mantener compatibilidad
             self.original_stdout.write(text)
             
+            # Filtrar mensajes de comandos slash para reducir spam
+            stripped_text = text.strip()
+            if (stripped_text.startswith('- /') and ':' in stripped_text) or \
+               'discord.http' in stripped_text or \
+               'discord.gateway' in stripped_text or \
+               'discord.client' in stripped_text or \
+               'urllib3' in stripped_text or \
+               'googleapiclient' in stripped_text or \
+               'google.auth' in stripped_text:
+                return  # No enviar estos mensajes a Discord
+            
             # Enviar a Discord
-            asyncio.create_task(self.send_to_discord(text.strip(), 'CONSOLE'))
+            asyncio.create_task(self.send_to_discord(stripped_text, 'CONSOLE'))
             
     def flush(self):
         """Flush del buffer"""
@@ -129,6 +151,13 @@ class DiscordConsoleRedirector:
         """Enviar mensaje de consola a Discord"""
         if not self.bot or not self.bot.is_ready():
             return
+            
+        # Rate limiting básico
+        import time
+        current_time = time.time()
+        if current_time - self.last_send_time < self.min_interval:
+            await asyncio.sleep(self.min_interval - (current_time - self.last_send_time))
+        self.last_send_time = time.time()
             
         try:
             channel = self.bot.get_channel(self.channel_id)
@@ -172,9 +201,24 @@ def setup_discord_logging(bot):
     logger = logging.getLogger()
     logger.setLevel(logging.DEBUG)
     
-    # Crear handler para Discord
+    # Filtrar loggers de librerías externas para reducir spam
+    logging.getLogger('discord').setLevel(logging.WARNING)
+    logging.getLogger('discord.http').setLevel(logging.WARNING)
+    logging.getLogger('discord.gateway').setLevel(logging.WARNING)
+    logging.getLogger('discord.client').setLevel(logging.WARNING)
+    logging.getLogger('urllib3').setLevel(logging.WARNING)
+    logging.getLogger('urllib3.connectionpool').setLevel(logging.WARNING)
+    logging.getLogger('urllib3.util.retry').setLevel(logging.WARNING)
+    logging.getLogger('googleapiclient').setLevel(logging.WARNING)
+    logging.getLogger('googleapiclient.discovery').setLevel(logging.WARNING)
+    logging.getLogger('googleapiclient.discovery_cache').setLevel(logging.WARNING)
+    logging.getLogger('google_auth_httplib2').setLevel(logging.WARNING)
+    logging.getLogger('google.auth').setLevel(logging.WARNING)
+    logging.getLogger('google.auth.transport').setLevel(logging.WARNING)
+    
+    # Crear handler para Discord con filtros
     discord_handler = DiscordLogHandler(bot, config.TARGET_CHANNEL_ID_LOGS)
-    discord_handler.setLevel(logging.DEBUG)
+    discord_handler.setLevel(logging.INFO)  # Solo INFO y superior
     
     # Formato para los logs
     formatter = logging.Formatter(
@@ -186,7 +230,7 @@ def setup_discord_logging(bot):
     # Agregar handler al logger
     logger.addHandler(discord_handler)
     
-    # Crear redirección de consola
+    # Crear redirección de consola con filtros
     console_redirector = DiscordConsoleRedirector(bot, config.TARGET_CHANNEL_ID_LOGS)
     console_redirector.start()
     
