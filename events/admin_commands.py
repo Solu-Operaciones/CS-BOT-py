@@ -568,22 +568,15 @@ class AdminCommands(commands.Cog):
                 status = "🔄" if cmd.name in duplicates else "✅"
                 command_list.append(f"{status} `/{cmd.name}`: {cmd.description}")
             
-            # Dividir en chunks si hay muchos comandos
-            if len(command_list) > 15:
+            # Dividir la lista en chunks de máximo 15 comandos por campo
+            chunk_size = 15
+            command_chunks = [command_list[i:i + chunk_size] for i in range(0, len(command_list), chunk_size)]
+            
+            for i, chunk in enumerate(command_chunks):
+                field_name = f'📋 Comandos Sincronizados (Parte {i+1})' if len(command_chunks) > 1 else '📋 Comandos Sincronizados'
                 embed.add_field(
-                    name='📋 Comandos Sincronizados (Primeros 15)',
-                    value='\n'.join(command_list[:15]),
-                    inline=False
-                )
-                embed.add_field(
-                    name='📝 Resto de Comandos',
-                    value='\n'.join(command_list[15:]),
-                    inline=False
-                )
-            else:
-                embed.add_field(
-                    name='📋 Comandos Sincronizados',
-                    value='\n'.join(command_list),
+                    name=field_name,
+                    value='\n'.join(chunk),
                     inline=False
                 )
             
