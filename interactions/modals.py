@@ -1334,7 +1334,6 @@ class FacturaBModal(discord.ui.Modal, title='Registrar Factura B'):
             
             client = initialize_google_sheets(config.GOOGLE_CREDENTIALS_JSON)
             spreadsheet = client.open_by_key(config.SPREADSHEET_ID_FAC_A)
-            sheet_range = "FacB!A:G"  # Usar el rango de Factura B
             
             # Obtener la hoja FacB
             try:
@@ -1343,6 +1342,8 @@ class FacturaBModal(discord.ui.Modal, title='Registrar Factura B'):
                 await interaction.response.send_message('❌ Error: No se encontró la hoja "FacB" en el spreadsheet.', ephemeral=True)
                 return
             
+            # Usar solo el rango de columnas, no el nombre de la hoja
+            sheet_range = "A:G"
             rows = sheet.get(sheet_range)
             header = rows[0] if rows else []
             
