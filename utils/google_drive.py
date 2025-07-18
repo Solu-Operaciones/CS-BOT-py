@@ -32,16 +32,36 @@ def initialize_google_drive(credentials_json: str):
         # Verificar que las credenciales son válidas haciendo una prueba
         drive_service = build('drive', 'v3', credentials=credentials)
         
-        # Hacer una llamada de prueba para verificar autenticación
-        try:
-            test_response = drive_service.files().list(pageSize=1, fields='files(id)').execute()
-            print("✅ Autenticación con Google Drive exitosa")
-        except Exception as auth_error:
-            error_msg = str(auth_error)
-            if 'invalid_grant' in error_msg.lower() or 'jwt' in error_msg.lower():
-                raise ValueError(f"Error de autenticación JWT: {error_msg}. Verifica que las credenciales sean correctas y la cuenta de servicio tenga permisos.")
-            else:
-                raise ValueError(f"Error de autenticación con Google Drive: {error_msg}")
+        # Hacer una llamada de prueba para verificar autenticación con reintentos
+        max_retries = 3
+        retry_delay = 2  # segundos
+        
+        for attempt in range(max_retries):
+            try:
+                test_response = drive_service.files().list(pageSize=1, fields='files(id)').execute()
+                print("✅ Autenticación con Google Drive exitosa")
+                break
+            except Exception as auth_error:
+                error_msg = str(auth_error)
+                
+                # Si es error 500 (Google), reintentar
+                if '500' in error_msg or 'internal error' in error_msg.lower():
+                    if attempt < max_retries - 1:
+                        print(f"⚠️ Error 500 de Google Drive (intento {attempt + 1}/{max_retries}). Reintentando en {retry_delay} segundos...")
+                        time.sleep(retry_delay)
+                        retry_delay *= 2  # Backoff exponencial
+                        continue
+                    else:
+                        print(f"❌ Error 500 persistente después de {max_retries} intentos")
+                        raise ValueError(f"Error temporal de Google Drive (500): {error_msg}. Intenta más tarde.")
+                
+                # Si es error de credenciales, no reintentar
+                elif 'invalid_grant' in error_msg.lower() or 'jwt' in error_msg.lower():
+                    raise ValueError(f"Error de autenticación JWT: {error_msg}. Verifica que las credenciales sean correctas y la cuenta de servicio tenga permisos.")
+                
+                # Otros errores
+                else:
+                    raise ValueError(f"Error de autenticación con Google Drive: {error_msg}")
         
         print("Instancia de Google Drive inicializada correctamente.")
         return drive_service
