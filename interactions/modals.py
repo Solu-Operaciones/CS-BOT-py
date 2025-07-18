@@ -354,6 +354,7 @@ class CasoModal(discord.ui.Modal, title='Detalles del Caso'):
                 return
             # Verificar duplicado y guardar en Google Sheets
             from utils.google_sheets import initialize_google_sheets, check_if_pedido_exists
+            from utils.google_client_manager import get_sheets_client
             from datetime import datetime
             import pytz
             if not config.GOOGLE_CREDENTIALS_JSON:
