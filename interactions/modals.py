@@ -890,6 +890,14 @@ class CancelacionModal(discord.ui.Modal, title='Registrar Cancelación'):
             required=True,
             max_length=100
         )
+        self.motivo = discord.ui.TextInput(
+            label="Motivo de Cancelación",
+            placeholder="Ingresa el motivo de la cancelación...",
+            custom_id="cancelacionMotivoInput",
+            style=discord.TextStyle.paragraph,
+            required=True,
+            max_length=500
+        )
         self.observaciones = discord.ui.TextInput(
             label="Observaciones",
             placeholder="Observaciones (opcional)",
@@ -899,6 +907,7 @@ class CancelacionModal(discord.ui.Modal, title='Registrar Cancelación'):
             max_length=1000
         )
         self.add_item(self.pedido)
+        self.add_item(self.motivo)
         self.add_item(self.observaciones)
 
     async def on_submit(self, interaction: discord.Interaction):
@@ -908,14 +917,19 @@ class CancelacionModal(discord.ui.Modal, title='Registrar Cancelación'):
         import pytz
         try:
             user_id = str(interaction.user.id)
-            pending_data = state_manager.get_user_state(user_id, "cancelaciones")
-            tipo_cancelacion = pending_data.get('tipoCancelacion', 'CANCELAR') if pending_data else 'CANCELAR'
             pedido = self.pedido.value.strip()
+            motivo = self.motivo.value.strip()
             observaciones = self.observaciones.value.strip()
             agente = interaction.user.display_name
             tz = pytz.timezone('America/Argentina/Buenos_Aires')
             now = datetime.now(tz)
             fecha_hora = now.strftime('%d/%m/%Y %H:%M:%S')
+            
+            # Validar campos obligatorios
+            if not pedido or not motivo:
+                await interaction.response.send_message('❌ Error: El número de pedido y el motivo de cancelación son obligatorios.', ephemeral=True)
+                return
+            
             # Guardar en Google Sheets
             from utils.google_sheets import initialize_google_sheets
             if not config.GOOGLE_CREDENTIALS_JSON or not config.SPREADSHEET_ID_CASOS or not config.GOOGLE_SHEET_RANGE_CANCELACIONES:
@@ -943,15 +957,20 @@ class CancelacionModal(discord.ui.Modal, title='Registrar Cancelación'):
             header = rows[0] if rows else []
             def normaliza_columna(nombre):
                 return str(nombre).strip().replace(' ', '').replace('/', '').replace('-', '').lower()
-            # Buscar índices de columnas
+            # Buscar índices de columnas según la nueva estructura
             idx_pedido = next((i for i, col in enumerate(header) if normaliza_columna(col) == normaliza_columna('Número de pedido')), None)
             idx_agente = next((i for i, col in enumerate(header) if normaliza_columna(col) == normaliza_columna('Agente que carga')), None)
             idx_fecha = next((i for i, col in enumerate(header) if normaliza_columna(col) == normaliza_columna('FECHA')), None)
             idx_solicitud = next((i for i, col in enumerate(header) if normaliza_columna(col) == normaliza_columna('SOLICITUD')), None)
+            idx_motivo = next((i for i, col in enumerate(header) if normaliza_columna(col) == normaliza_columna('MOTIVO DE CANCELACIÓN')), None)
             idx_frenado = next((i for i, col in enumerate(header) if normaliza_columna(col) == normaliza_columna('FRENADO')), None)
             idx_reembolso = next((i for i, col in enumerate(header) if normaliza_columna(col) == normaliza_columna('REEMBOLSO')), None)
+            idx_codigo_sap = next((i for i, col in enumerate(header) if normaliza_columna(col) == normaliza_columna('CODIGO SAP (Gestión Back Office)')), None)
             idx_agente_back = next((i for i, col in enumerate(header) if normaliza_columna(col) == normaliza_columna('AGENTE BACK')), None)
             idx_observaciones = next((i for i, col in enumerate(header) if normaliza_columna(col) == normaliza_columna('OBSERVACIONES')), None)
+            idx_error = next((i for i, col in enumerate(header) if normaliza_columna(col) == normaliza_columna('ERROR')), None)
+            idx_error_envio = next((i for i, col in enumerate(header) if normaliza_columna(col) == normaliza_columna('ErrorEnvioCheck')), None)
+            
             # Preparar la fila
             row_data = [''] * len(header)
             if idx_pedido is not None:
@@ -961,17 +980,26 @@ class CancelacionModal(discord.ui.Modal, title='Registrar Cancelación'):
             if idx_fecha is not None:
                 row_data[idx_fecha] = fecha_hora
             if idx_solicitud is not None:
-                row_data[idx_solicitud] = tipo_cancelacion
+                row_data[idx_solicitud] = 'CANCELAR'
+            if idx_motivo is not None:
+                row_data[idx_motivo] = motivo
             if idx_frenado is not None:
                 row_data[idx_frenado] = 'Pendiente'
             if idx_reembolso is not None:
                 row_data[idx_reembolso] = 'Pendiente'
+            if idx_codigo_sap is not None:
+                row_data[idx_codigo_sap] = ''
             if idx_agente_back is not None:
                 row_data[idx_agente_back] = 'Nadie'
             if idx_observaciones is not None:
                 row_data[idx_observaciones] = observaciones
+            if idx_error is not None:
+                row_data[idx_error] = ''
+            if idx_error_envio is not None:
+                row_data[idx_error_envio] = ''
+            
             sheet.append_row(row_data)
-            confirmation_message = f"✅ **Cancelación registrada exitosamente**\n\n📋 **Detalles:**\n• **N° de Pedido:** {pedido}\n• **Tipo:** {tipo_cancelacion}\n• **Agente:** {agente}\n• **Fecha:** {fecha_hora}\n\nLa cancelación ha sido guardada en Google Sheets."
+            confirmation_message = f"✅ **Cancelación registrada exitosamente**\n\n📋 **Detalles:**\n• **N° de Pedido:** {pedido}\n• **Motivo:** {motivo}\n• **Agente:** {agente}\n• **Fecha:** {fecha_hora}\n\nLa cancelación ha sido guardada en Google Sheets."
             await interaction.response.send_message(confirmation_message, ephemeral=True)
             state_manager.delete_user_state(user_id, "cancelaciones")
         except Exception as error:

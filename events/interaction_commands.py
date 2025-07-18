@@ -301,19 +301,15 @@ class InteractionCommands(commands.Cog):
             await interaction.response.send_message(
                 f"Este comando solo puede ser usado en el canal <#{getattr(config, 'TARGET_CHANNEL_ID_CASOS_CANCELACION', '')}>.", ephemeral=True)
             return
-        from interactions.select_menus import build_tipo_cancelacion_menu
+        from interactions.modals import CancelacionModal
         from utils.state_manager import set_user_state, delete_user_state
         try:
-            view = build_tipo_cancelacion_menu()
             set_user_state(str(interaction.user.id), {"type": "cancelaciones", "paso": 1}, "cancelaciones")
-            await interaction.response.send_message(
-                content='Por favor, selecciona el tipo de cancelación:',
-                view=view,
-                ephemeral=True
-            )
-            print(f"Usuario {interaction.user} puesto en estado pendiente (cancelaciones, paso 1). Select Menu mostrado.")
+            modal = CancelacionModal()
+            await interaction.response.send_modal(modal)
+            print(f"Usuario {interaction.user} puesto en estado pendiente (cancelaciones, paso 1). Modal mostrado.")
         except Exception as error:
-            print('Error al mostrar el Select Menu de Tipo de Cancelación:', error)
+            print('Error al mostrar el Modal de Cancelación:', error)
             await interaction.response.send_message(
                 'Hubo un error al iniciar el formulario de registro de Cancelaciones. Por favor, inténtalo de nuevo.', ephemeral=True)
             delete_user_state(str(interaction.user.id), "cancelaciones")

@@ -81,29 +81,7 @@ class TipoReembolsoView(discord.ui.View):
 def build_tipo_reembolso_menu():
     return TipoReembolsoView()
 
-class TipoCancelacionSelect(discord.ui.Select):
-    def __init__(self):
-        options = [
-            discord.SelectOption(label='CANCELAR', value='CANCELAR'),
-            discord.SelectOption(label='SEGUIMIENTO', value='SEGUIMIENTO'),
-        ]
-        super().__init__(placeholder='Selecciona el tipo de cancelación...', min_values=1, max_values=1, options=options, custom_id='cancelacionTipoSelect')
-
-    async def callback(self, interaction: discord.Interaction):
-        from utils.state_manager import set_user_state
-        user_id = str(interaction.user.id)
-        selected_tipo = self.values[0]
-        set_user_state(user_id, {"type": "cancelaciones", "paso": 2, "tipoCancelacion": selected_tipo}, "cancelaciones")
-        from interactions.modals import CancelacionModal
-        await interaction.response.send_modal(CancelacionModal())
-
-class TipoCancelacionView(discord.ui.View):
-    def __init__(self):
-        super().__init__(timeout=120)
-        self.add_item(TipoCancelacionSelect())
-
-def build_tipo_cancelacion_menu():
-    return TipoCancelacionView()
+# Eliminado el select menu de cancelaciones - ahora va directo al modal
 
 class TipoReclamosMLSelect(discord.ui.Select):
     def __init__(self):
