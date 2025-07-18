@@ -66,29 +66,20 @@ class AdminCommands(commands.Cog):
             except Exception as e:
                 print(f'[ADMIN] Error limpiando cache: {e}')
 
-            # 2. Reinicializar Google Sheets
+            # 2. Reinicializar Google Sheets y Drive
             try:
                 if config.GOOGLE_CREDENTIALS_JSON:
-                    from utils.google_sheets import initialize_google_sheets
-                    sheets_instance = initialize_google_sheets(config.GOOGLE_CREDENTIALS_JSON)
+                    from utils.google_client_manager import reset_google_clients, get_sheets_client, get_drive_client
+                    reset_google_clients()
+                    sheets_instance = get_sheets_client()
+                    drive_instance = get_drive_client()
                     self.bot.sheets_instance = sheets_instance
-                    print('[ADMIN] Google Sheets reinicializado')
-                else:
-                    print('[ADMIN] No se pudo reinicializar Google Sheets - credenciales no configuradas')
-            except Exception as e:
-                print(f'[ADMIN] Error reinicializando Google Sheets: {e}')
-
-            # 3. Reinicializar Google Drive
-            try:
-                if config.GOOGLE_CREDENTIALS_JSON:
-                    from utils.google_drive import initialize_google_drive
-                    drive_instance = initialize_google_drive(config.GOOGLE_CREDENTIALS_JSON)
                     self.bot.drive_instance = drive_instance
-                    print('[ADMIN] Google Drive reinicializado')
+                    print('[ADMIN] Google Sheets y Drive reinicializados')
                 else:
-                    print('[ADMIN] No se pudo reinicializar Google Drive - credenciales no configuradas')
+                    print('[ADMIN] No se pudo reinicializar Google - credenciales no configuradas')
             except Exception as e:
-                print(f'[ADMIN] Error reinicializando Google Drive: {e}')
+                print(f'[ADMIN] Error reinicializando Google: {e}')
 
             # 4. Recargar manual si está configurado
             try:

@@ -4,9 +4,8 @@ from datetime import datetime
 import pytz
 import discord
 import json
-from utils.google_client_manager import get_sheets_client, get_drive_client
 
-def get_sheets_client():
+def initialize_google_sheets(credentials_json: str):
     # try:
         scopes = [
             'https://www.googleapis.com/auth/spreadsheets',

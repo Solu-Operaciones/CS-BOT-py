@@ -429,7 +429,7 @@ class InteractionCommands(commands.Cog):
                 return
             
             # Inicializar Google Sheets
-            client = get_sheets_client()
+            client = initialize_google_sheets(config.GOOGLE_CREDENTIALS_JSON)
             spreadsheet = client.open_by_key(config.SPREADSHEET_ID_CASOS)
             
             # Contador de errores encontrados

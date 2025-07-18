@@ -3,8 +3,8 @@ from discord.ext import commands, tasks
 import asyncio
 import config
 import logging
-from utils.google_sheets import initialize_google_sheets, check_sheet_for_errors
-from utils.google_drive import initialize_google_drive
+from utils.google_sheets import check_sheet_for_errors
+from utils.google_client_manager import initialize_google_clients, get_sheets_client, get_drive_client
 from utils.andreani import get_andreani_tracking
 from utils.discord_logger import setup_discord_logging, log_exception
 # from utils.qa_service import get_answer_from_manual
@@ -37,8 +37,15 @@ async def on_ready():
             print("Error CRÍTICO: credenciales de Google no cargadas.")
             return
 
-        sheets_instance = initialize_google_sheets(config.GOOGLE_CREDENTIALS)
-        drive_instance  = initialize_google_drive(config.GOOGLE_CREDENTIALS)
+        # Usar el gestor centralizado de clientes de Google
+        initialize_google_clients()
+        sheets_instance = get_sheets_client()
+        drive_instance = get_drive_client()
+        
+        # Agregar las instancias como atributos del bot para acceso global
+        bot.sheets_instance = sheets_instance
+        bot.drive_instance = drive_instance
+        
         print("APIs de Google inicializadas correctamente.")
     except Exception as error:
         print("Error al inicializar APIs de Google:", error)

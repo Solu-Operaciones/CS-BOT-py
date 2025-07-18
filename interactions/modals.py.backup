@@ -194,7 +194,7 @@ class FacturaBModal(discord.ui.Modal, title='Registrar Solicitud Factura B'):
             from utils.google_sheets import initialize_google_sheets, check_if_pedido_exists
             from datetime import datetime
             import pytz
-            client = get_sheets_client()
+            client = initialize_google_sheets(config.GOOGLE_CREDENTIALS_JSON)
             spreadsheet = client.open_by_key(config.SPREADSHEET_ID_FAC_A)
             sheet_range = getattr(config, 'SHEET_RANGE_FAC_B', 'FacB!A:G')
             hoja_nombre = None
@@ -363,7 +363,7 @@ class CasoModal(discord.ui.Modal, title='Detalles del Caso'):
                 await interaction.response.send_message('❌ Error: El ID de la hoja de Casos no está configurado.', ephemeral=True)
                 state_manager.delete_user_state(user_id, "cambios_devoluciones")
                 return
-            client = get_sheets_client()
+            client = initialize_google_sheets(config.GOOGLE_CREDENTIALS_JSON)
             spreadsheet = client.open_by_key(config.SPREADSHEET_ID_CASOS)
             sheet_range = getattr(config, 'SHEET_RANGE_CASOS_READ', 'A:K')
             hoja_nombre = None
@@ -561,7 +561,7 @@ class BuscarCasoModal(discord.ui.Modal, title='Búsqueda de Caso'):
             
             # Inicializar cliente de Google Sheets
             from utils.google_sheets import initialize_google_sheets
-            client = get_sheets_client()
+            client = initialize_google_sheets(config.GOOGLE_CREDENTIALS_JSON)
             spreadsheet = client.open_by_key(config.SPREADSHEET_ID_BUSCAR_CASO)
             found_rows = []
             search_summary = f"Resultados de la búsqueda para el pedido **{pedido}**:\n\n"
@@ -649,7 +649,7 @@ class CantidadCasosModal(discord.ui.Modal, title='Finalizar Tarea'):
             if not config.GOOGLE_SHEET_ID_TAREAS:
                 await interaction.followup.send('❌ Error: El ID de la hoja de tareas no está configurado.', ephemeral=True)
                 return
-            client = google_sheets.get_sheets_client()
+            client = google_sheets.initialize_google_sheets(config.GOOGLE_CREDENTIALS_JSON)
             spreadsheet = client.open_by_key(config.GOOGLE_SHEET_ID_TAREAS)
             sheet_activas = spreadsheet.worksheet('Tareas Activas')
             sheet_historial = spreadsheet.worksheet('Historial')
@@ -810,7 +810,7 @@ class SolicitudEnviosModal(discord.ui.Modal, title='Detalles de la Solicitud de 
                 await interaction.response.send_message('❌ Error: La variable GOOGLE_SHEET_RANGE_ENVIOS no está configurada.', ephemeral=True)
                 state_manager.delete_user_state(user_id, "solicitudes_envios")
                 return
-            client = get_sheets_client()
+            client = initialize_google_sheets(config.GOOGLE_CREDENTIALS_JSON)
             spreadsheet = client.open_by_key(config.SPREADSHEET_ID_CASOS)
             sheet_range = getattr(config, 'GOOGLE_SHEET_RANGE_ENVIOS', 'CAMBIO DE DIRECCIÓN 2025!A:M')
             hoja_nombre = None
@@ -986,7 +986,7 @@ class ReembolsoModal(discord.ui.Modal, title='Detalles del Reembolso'):
                 await interaction.response.send_message('❌ Error: La variable SHEET_RANGE_REEMBOLSOS no está configurada.', ephemeral=True)
                 state_manager.delete_user_state(user_id, "reembolsos")
                 return
-            client = get_sheets_client()
+            client = initialize_google_sheets(config.GOOGLE_CREDENTIALS_JSON)
             spreadsheet = client.open_by_key(config.SPREADSHEET_ID_CASOS)
             sheet_range = getattr(config, 'SHEET_RANGE_REEMBOLSOS', 'REEMBOLSOS!A:L')
             hoja_nombre = None
@@ -1103,7 +1103,7 @@ class CancelacionModal(discord.ui.Modal, title='Registrar Cancelación'):
             if not config.GOOGLE_CREDENTIALS_JSON or not config.SPREADSHEET_ID_CASOS or not config.GOOGLE_SHEET_RANGE_CANCELACIONES:
                 await interaction.response.send_message('❌ Error de configuración para Google Sheets.', ephemeral=True)
                 return
-            client = get_sheets_client()
+            client = initialize_google_sheets(config.GOOGLE_CREDENTIALS_JSON)
             spreadsheet = client.open_by_key(config.SPREADSHEET_ID_CASOS)
             sheet_range = config.GOOGLE_SHEET_RANGE_CANCELACIONES
             hoja_nombre = None
@@ -1241,7 +1241,7 @@ class ReclamosMLModal(discord.ui.Modal, title='Detalles del Reclamo ML'):
                 await interaction.response.send_message('❌ Error: La variable GOOGLE_SHEET_RANGE_RECLAMOS_ML no está configurada.', ephemeral=True)
                 state_manager.delete_user_state(user_id, "reclamos_ml")
                 return
-            client = get_sheets_client()
+            client = initialize_google_sheets(config.GOOGLE_CREDENTIALS_JSON)
             spreadsheet = client.open_by_key(config.SPREADSHEET_ID_CASOS)
             sheet_range = getattr(config, 'GOOGLE_SHEET_RANGE_RECLAMOS_ML', 'SOLICITUDES CON RECLAMO ABIERTO 2025 ML!A:L')
             hoja_nombre = None
@@ -1376,7 +1376,7 @@ class PiezaFaltanteModal(discord.ui.Modal, title='Registrar Pieza Faltante'):
             if not config.GOOGLE_SHEET_RANGE_PIEZA_FALTANTE:
                 await interaction.response.send_message('❌ Error: La variable GOOGLE_SHEET_RANGE_PIEZA_FALTANTE no está configurada.', ephemeral=True)
                 return
-            client = get_sheets_client()
+            client = initialize_google_sheets(config.GOOGLE_CREDENTIALS_JSON)
             spreadsheet = client.open_by_key(config.SPREADSHEET_ID_CASOS)
             sheet_range = config.GOOGLE_SHEET_RANGE_PIEZA_FALTANTE
             hoja_nombre = None

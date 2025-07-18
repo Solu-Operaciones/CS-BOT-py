@@ -12,7 +12,6 @@ import asyncio
 import pytz
 import re
 import time
-from utils.google_client_manager import get_sheets_client, get_drive_client
 
 # Obtener el ID del canal desde la variable de entorno
 target_channel_id = int(getattr(config, 'TARGET_CHANNEL_ID_TAREAS', '0') or '0')
@@ -154,7 +153,7 @@ class TaskPanel(commands.Cog):
         try:
             # Inicializar Google Sheets
             await interaction.followup.send('🔄 Inicializando Google Sheets...', ephemeral=True)
-            client = google_sheets.get_sheets_client()
+            client = google_sheets.initialize_google_sheets(config.GOOGLE_CREDENTIALS_JSON)
             
             # Abrir spreadsheet
             await interaction.followup.send('🔄 Abriendo spreadsheet...', ephemeral=True)
@@ -269,7 +268,7 @@ class TaskStartButton(discord.ui.Button):
         
         try:
             # --- Google Sheets ---
-            client = google_sheets.get_sheets_client()
+            client = google_sheets.initialize_google_sheets(config.GOOGLE_CREDENTIALS_JSON)
             spreadsheet = client.open_by_key(config.GOOGLE_SHEET_ID_TAREAS)
             
             # Verificar qué hojas existen
@@ -355,7 +354,7 @@ class TaskObservacionesModal(discord.ui.Modal, title='Registrar Observaciones'):
         
         try:
             # --- Google Sheets ---
-            client = google_sheets.get_sheets_client()
+            client = google_sheets.initialize_google_sheets(config.GOOGLE_CREDENTIALS_JSON)
             spreadsheet = client.open_by_key(config.GOOGLE_SHEET_ID_TAREAS)
             sheet_activas = spreadsheet.worksheet('Tareas Activas')
             sheet_historial = spreadsheet.worksheet('Historial')
@@ -532,7 +531,7 @@ class PausarReanudarButton(discord.ui.Button):
         await interaction.response.defer()
         
         try:
-            client = google_sheets.get_sheets_client()
+            client = google_sheets.initialize_google_sheets(config.GOOGLE_CREDENTIALS_JSON)
             spreadsheet = client.open_by_key(config.GOOGLE_SHEET_ID_TAREAS)
             sheet_activas = spreadsheet.worksheet('Tareas Activas')
             sheet_historial = spreadsheet.worksheet('Historial')
@@ -713,7 +712,7 @@ class PausarReanudarButtonPersistent(discord.ui.Button):
                 import utils.google_sheets as google_sheets
                 import config
                 
-                client = google_sheets.get_sheets_client()
+                client = google_sheets.initialize_google_sheets(config.GOOGLE_CREDENTIALS_JSON)
                 spreadsheet = client.open_by_key(config.GOOGLE_SHEET_ID_TAREAS)
                 sheet_activas = spreadsheet.worksheet('Tareas Activas')
                 
@@ -730,7 +729,7 @@ class PausarReanudarButtonPersistent(discord.ui.Button):
                 import utils.google_sheets as google_sheets
                 import config
                 
-                client = google_sheets.get_sheets_client()
+                client = google_sheets.initialize_google_sheets(config.GOOGLE_CREDENTIALS_JSON)
                 spreadsheet = client.open_by_key(config.GOOGLE_SHEET_ID_TAREAS)
                 sheet_activas = spreadsheet.worksheet('Tareas Activas')
                 
@@ -747,7 +746,7 @@ class PausarReanudarButtonPersistent(discord.ui.Button):
                 return
             
             # Ahora proceder con la lógica de pausar/reanudar
-            client = google_sheets.get_sheets_client()
+            client = google_sheets.initialize_google_sheets(config.GOOGLE_CREDENTIALS_JSON)
             spreadsheet = client.open_by_key(config.GOOGLE_SHEET_ID_TAREAS)
             sheet_activas = spreadsheet.worksheet('Tareas Activas')
             sheet_historial = spreadsheet.worksheet('Historial')
@@ -840,7 +839,7 @@ class FinalizarButtonPersistent(discord.ui.Button):
             import utils.google_sheets as google_sheets
             import config
             
-            client = google_sheets.get_sheets_client()
+            client = google_sheets.initialize_google_sheets(config.GOOGLE_CREDENTIALS_JSON)
             spreadsheet = client.open_by_key(config.GOOGLE_SHEET_ID_TAREAS)
             sheet_activas = spreadsheet.worksheet('Tareas Activas')
             
