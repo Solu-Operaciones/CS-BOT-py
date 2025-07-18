@@ -18,12 +18,41 @@ def initialize_google_drive(credentials_json: str):
         except json.JSONDecodeError as e:
             raise ValueError(f"Error al parsear credenciales JSON: {e}")
         
+        # Verificar campos requeridos en las credenciales
+        required_fields = ['type', 'project_id', 'private_key_id', 'private_key', 'client_email', 'client_id']
+        missing_fields = [field for field in required_fields if field not in creds_dict]
+        if missing_fields:
+            raise ValueError(f"Credenciales incompletas. Faltan campos: {missing_fields}")
+        
+        print(f"🔍 DEBUG - Inicializando Google Drive con cuenta: {creds_dict.get('client_email', 'N/A')}")
+        print(f"🔍 DEBUG - Project ID: {creds_dict.get('project_id', 'N/A')}")
+        
         credentials = Credentials.from_service_account_info(creds_dict, scopes=scopes)
+        
+        # Verificar que las credenciales son válidas haciendo una prueba
         drive_service = build('drive', 'v3', credentials=credentials)
-        print("Instancia de Google Drive inicializada.")
+        
+        # Hacer una llamada de prueba para verificar autenticación
+        try:
+            test_response = drive_service.files().list(pageSize=1, fields='files(id)').execute()
+            print("✅ Autenticación con Google Drive exitosa")
+        except Exception as auth_error:
+            error_msg = str(auth_error)
+            if 'invalid_grant' in error_msg.lower() or 'jwt' in error_msg.lower():
+                raise ValueError(f"Error de autenticación JWT: {error_msg}. Verifica que las credenciales sean correctas y la cuenta de servicio tenga permisos.")
+            else:
+                raise ValueError(f"Error de autenticación con Google Drive: {error_msg}")
+        
+        print("Instancia de Google Drive inicializada correctamente.")
         return drive_service
     except Exception as error:
-        print("Error al inicializar Google Drive:", error)
+        print(f"❌ Error al inicializar Google Drive: {error}")
+        if 'invalid_grant' in str(error).lower():
+            print("💡 SUGERENCIA: Verifica que:")
+            print("   1. Las credenciales JSON sean correctas")
+            print("   2. La cuenta de servicio tenga permisos en Google Drive")
+            print("   3. La cuenta de servicio no esté deshabilitada")
+            print("   4. El archivo de credenciales no esté corrupto")
         raise
 
 def find_or_create_drive_folder(drive_service, parent_id: str, folder_name: str) -> str:

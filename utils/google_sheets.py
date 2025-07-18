@@ -6,28 +6,56 @@ import discord
 import json
 
 def initialize_google_sheets(credentials_json: str):
-    # try:
+    try:
         scopes = [
             'https://www.googleapis.com/auth/spreadsheets',
             'https://www.googleapis.com/auth/drive'
         ]
         
         # Validar que credentials_json sea un JSON válido
-        # try:
-        if isinstance(credentials_json, str):
-            creds_dict = json.loads(credentials_json)
-        else:
-            creds_dict = credentials_json
-        # except json.JSONDecodeError as e:
-        #     raise ValueError(f"Error al parsear credenciales JSON: {e}")
+        try:
+            if isinstance(credentials_json, str):
+                creds_dict = json.loads(credentials_json)
+            else:
+                creds_dict = credentials_json
+        except json.JSONDecodeError as e:
+            raise ValueError(f"Error al parsear credenciales JSON: {e}")
+        
+        # Verificar campos requeridos en las credenciales
+        required_fields = ['type', 'project_id', 'private_key_id', 'private_key', 'client_email', 'client_id']
+        missing_fields = [field for field in required_fields if field not in creds_dict]
+        if missing_fields:
+            raise ValueError(f"Credenciales incompletas. Faltan campos: {missing_fields}")
+        
+        print(f"🔍 DEBUG - Inicializando Google Sheets con cuenta: {creds_dict.get('client_email', 'N/A')}")
+        print(f"🔍 DEBUG - Project ID: {creds_dict.get('project_id', 'N/A')}")
         
         credentials = Credentials.from_service_account_info(creds_dict, scopes=scopes)
         client = gspread.authorize(credentials)
-        print("Instancia de Google Sheets inicializada.")
+        
+        # Hacer una llamada de prueba para verificar autenticación
+        try:
+            # Intentar listar spreadsheets para verificar autenticación
+            test_spreadsheets = client.openall()
+            print("✅ Autenticación con Google Sheets exitosa")
+        except Exception as auth_error:
+            error_msg = str(auth_error)
+            if 'invalid_grant' in error_msg.lower() or 'jwt' in error_msg.lower():
+                raise ValueError(f"Error de autenticación JWT: {error_msg}. Verifica que las credenciales sean correctas y la cuenta de servicio tenga permisos.")
+            else:
+                raise ValueError(f"Error de autenticación con Google Sheets: {error_msg}")
+        
+        print("Instancia de Google Sheets inicializada correctamente.")
         return client
-    # except Exception as error:
-    #     print("Error al inicializar Google Sheets:", error)
-    #     raise
+    except Exception as error:
+        print(f"❌ Error al inicializar Google Sheets: {error}")
+        if 'invalid_grant' in str(error).lower():
+            print("💡 SUGERENCIA: Verifica que:")
+            print("   1. Las credenciales JSON sean correctas")
+            print("   2. La cuenta de servicio tenga permisos en Google Sheets")
+            print("   3. La cuenta de servicio no esté deshabilitada")
+            print("   4. El archivo de credenciales no esté corrupto")
+        raise
 
 def check_if_pedido_exists(sheet, sheet_range: str, pedido_number: str) -> bool:
     """
