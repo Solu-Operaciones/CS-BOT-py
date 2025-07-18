@@ -164,8 +164,9 @@ class AttachmentHandler(commands.Cog):
         cleanup_expired_states()
         pending_data = get_user_state(user_id, "facturaA")
         
-        # Solo manejar si el usuario está esperando adjuntos para Factura A
-        if pending_data and pending_data.get('type') == 'facturaA' and message.attachments:
+        # Solo manejar si el usuario está esperando adjuntos para Factura A Y está en el canal correcto
+        if (pending_data and pending_data.get('type') == 'facturaA' and message.attachments and 
+            str(message.channel.id) == str(config.TARGET_CHANNEL_ID_FAC_A)):
             # Eliminar el estado SOLO si vamos a procesar el mensaje
             delete_user_state(user_id, "facturaA")
             
