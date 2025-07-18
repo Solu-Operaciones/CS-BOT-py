@@ -111,7 +111,7 @@ class SolicitudCargadaButton(discord.ui.Button):
             self.disabled = True
             
             # Actualizar el embed
-            if interaction.message.embeds:
+            if interaction.message and interaction.message.embeds:
                 embed = interaction.message.embeds[0]
                 embed.color = discord.Color.green()
                 embed.add_field(
@@ -192,17 +192,11 @@ class AttachmentHandler(commands.Cog):
                 
                 # Subir cada adjunto
                 uploaded_files = []
-                debug_message = ""
                 
                 for attachment in message.attachments:
                     try:
                         uploaded = upload_file_to_drive(drive_service, folder_id, attachment)
                         uploaded_files.append(uploaded)
-                        
-                        # Mostrar información de debug si está disponible
-                        if hasattr(upload_file_to_drive, 'debug_info') and upload_file_to_drive.debug_info:
-                            debug_message = f"{upload_file_to_drive.debug_info}\n\n"
-                            upload_file_to_drive.debug_info = ""  # Limpiar después de mostrar
                         
                         # Delay adicional entre archivos para mayor seguridad
                         import asyncio
@@ -224,10 +218,7 @@ class AttachmentHandler(commands.Cog):
                 file_names = ', '.join([f["name"] for f in uploaded_files])
                 success_message = f'✅ **Archivos subidos exitosamente**\n\n📁 **Pedido:** {pedido}\n📎 **Archivos:** {file_names}'
                 
-                if debug_message:
-                    await message.reply(f"{debug_message}{success_message}")
-                else:
-                    await message.reply(success_message)
+                await message.reply(success_message)
                 
                 # Buscar información del caso en Google Sheets para crear el embed
                 if not config.GOOGLE_CREDENTIALS_JSON or not config.SPREADSHEET_ID_FAC_A:
