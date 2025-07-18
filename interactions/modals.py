@@ -241,8 +241,54 @@ class FacturaBModal(discord.ui.Modal, title='Registrar Solicitud Factura B'):
             row_data[canal_col] = canal_compra
             row_data[email_col] = email
             sheet.append_row(row_data)
-            confirmation_message = '✅ **Solicitud de Factura B cargada correctamente en Google Sheets.**'
-            await interaction.response.send_message(confirmation_message, ephemeral=True)
+            
+            # Crear embed con los datos de la solicitud
+            embed = discord.Embed(
+                title='🧾 Nueva Solicitud de Factura B',
+                description='Se ha cargado una nueva solicitud de Factura B en Google Sheets.',
+                color=discord.Color.green(),
+                timestamp=now
+            )
+            
+            embed.add_field(
+                name='📋 Número de Pedido',
+                value=pedido,
+                inline=True
+            )
+            
+            embed.add_field(
+                name='📝 ID Caso Wise',
+                value=caso,
+                inline=True
+            )
+            
+            embed.add_field(
+                name='📧 Email',
+                value=email,
+                inline=True
+            )
+            
+            embed.add_field(
+                name='🛒 Canal de Compra',
+                value=canal_compra,
+                inline=True
+            )
+            
+            embed.add_field(
+                name='👤 Asesor',
+                value=interaction.user.display_name,
+                inline=True
+            )
+            
+            embed.add_field(
+                name='📅 Fecha de Carga',
+                value=fecha_hora,
+                inline=True
+            )
+            
+            embed.set_footer(text=f'Solicitud cargada por {interaction.user.display_name}')
+            
+            await interaction.response.send_message(embed=embed)
         except Exception as error:
             await interaction.response.send_message(f'❌ Hubo un error al procesar tu solicitud de Factura B. Detalles: {error}', ephemeral=True)
         if not interaction.response.is_done():
