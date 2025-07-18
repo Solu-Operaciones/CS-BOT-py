@@ -57,8 +57,7 @@ class SolicitudCargadaButton(discord.ui.Button):
                 return
             
             # Actualizar Google Sheets
-            import utils.google_sheets as google_sheets
-            client = google_sheets.get_sheets_client()
+            client = get_sheets_client()
             spreadsheet = client.open_by_key(config.SPREADSHEET_ID_FAC_A)
             sheet_range = getattr(config, 'SHEET_RANGE_FAC_A', 'A:E')
             
@@ -87,8 +86,9 @@ class SolicitudCargadaButton(discord.ui.Button):
                 return
             
             header_row = rows[0]
-            pedido_col = google_sheets.get_col_index(header_row, 'Número de Pedido')
-            check_bo_col = google_sheets.get_col_index(header_row, 'Check BO Carga')
+            from utils.google_sheets import get_col_index
+            pedido_col = get_col_index(header_row, 'Número de Pedido')
+            check_bo_col = get_col_index(header_row, 'Check BO Carga')
             
             if pedido_col is None:
                 await interaction.response.send_message('❌ No se encontró la columna "Número de Pedido" en la hoja.', ephemeral=True)

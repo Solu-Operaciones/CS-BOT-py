@@ -649,11 +649,12 @@ class CantidadCasosModal(discord.ui.Modal, title='Finalizar Tarea'):
             if not config.GOOGLE_SHEET_ID_TAREAS:
                 await interaction.followup.send('❌ Error: El ID de la hoja de tareas no está configurado.', ephemeral=True)
                 return
-            client = google_sheets.get_sheets_client()
+            client = get_sheets_client()
             spreadsheet = client.open_by_key(config.GOOGLE_SHEET_ID_TAREAS)
             sheet_activas = spreadsheet.worksheet('Tareas Activas')
             sheet_historial = spreadsheet.worksheet('Historial')
-            datos_tarea = google_sheets.obtener_tarea_por_id(sheet_activas, self.tarea_id)
+            from utils.google_sheets import obtener_tarea_por_id
+            datos_tarea = obtener_tarea_por_id(sheet_activas, self.tarea_id)
             if not datos_tarea:
                 await interaction.followup.send('❌ No se encontró la tarea especificada.', ephemeral=True)
                 return
@@ -665,9 +666,10 @@ class CantidadCasosModal(discord.ui.Modal, title='Finalizar Tarea'):
             now = datetime.now(tz)
             fecha_finalizacion = now.strftime('%d/%m/%Y %H:%M:%S')
             max_intentos_sheet = 3
+            from utils.google_sheets import finalizar_tarea_por_id_con_cantidad
             for intento in range(max_intentos_sheet):
                 try:
-                    google_sheets.finalizar_tarea_por_id_con_cantidad(
+                    finalizar_tarea_por_id_con_cantidad(
                         sheet_activas,
                         sheet_historial,
                         self.tarea_id,

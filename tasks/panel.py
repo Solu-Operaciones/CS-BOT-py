@@ -7,7 +7,10 @@ import config
 import json
 from pathlib import Path
 from datetime import datetime
-from utils.google_sheets import COLUMNAS_TAREAS_ACTIVAS, COLUMNAS_HISTORIAL, registrar_tarea_activa, agregar_evento_historial
+from utils.google_sheets import (
+    COLUMNAS_TAREAS_ACTIVAS, COLUMNAS_HISTORIAL, registrar_tarea_activa, agregar_evento_historial,
+    obtener_tarea_por_id, pausar_tarea_por_id, reanudar_tarea_por_id, obtener_tarea_activa_por_usuario
+)
 import asyncio
 import pytz
 import re
@@ -536,7 +539,7 @@ class PausarReanudarButton(discord.ui.Button):
             spreadsheet = client.open_by_key(config.GOOGLE_SHEET_ID_TAREAS)
             sheet_activas = spreadsheet.worksheet('Tareas Activas')
             sheet_historial = spreadsheet.worksheet('Historial')
-            datos_tarea = google_sheets.obtener_tarea_por_id(sheet_activas, self.tarea_id)
+            datos_tarea = obtener_tarea_por_id(sheet_activas, self.tarea_id)
             if not datos_tarea:
                 await interaction.followup.send('❌ No se encontró la tarea especificada.', ephemeral=True)
                 return
@@ -547,10 +550,10 @@ class PausarReanudarButton(discord.ui.Button):
             
             if datos_tarea['estado'].lower() == 'en proceso':
                 # Pausar la tarea
-                google_sheets.pausar_tarea_por_id(sheet_activas, sheet_historial, self.tarea_id, str(interaction.user), fecha_actual)
+                pausar_tarea_por_id(sheet_activas, sheet_historial, self.tarea_id, str(interaction.user), fecha_actual)
                 
                 # Volver a obtener los datos actualizados
-                datos_tarea_actualizados = google_sheets.obtener_tarea_por_id(sheet_activas, self.tarea_id)
+                datos_tarea_actualizados = obtener_tarea_por_id(sheet_activas, self.tarea_id)
                 if not datos_tarea_actualizados:
                     await interaction.followup.send('❌ Error al obtener los datos actualizados de la tarea.', ephemeral=True)
                     return
@@ -577,10 +580,10 @@ class PausarReanudarButton(discord.ui.Button):
                 
             elif datos_tarea['estado'].lower() == 'pausada':
                 # Reanudar la tarea
-                google_sheets.reanudar_tarea_por_id(sheet_activas, sheet_historial, self.tarea_id, str(interaction.user), fecha_actual)
+                reanudar_tarea_por_id(sheet_activas, sheet_historial, self.tarea_id, str(interaction.user), fecha_actual)
                 
                 # Volver a obtener los datos actualizados
-                datos_tarea_actualizados = google_sheets.obtener_tarea_por_id(sheet_activas, self.tarea_id)
+                datos_tarea_actualizados = obtener_tarea_por_id(sheet_activas, self.tarea_id)
                 if not datos_tarea_actualizados:
                     await interaction.followup.send('❌ Error al obtener los datos actualizados de la tarea.', ephemeral=True)
                     return
@@ -717,7 +720,7 @@ class PausarReanudarButtonPersistent(discord.ui.Button):
                 spreadsheet = client.open_by_key(config.GOOGLE_SHEET_ID_TAREAS)
                 sheet_activas = spreadsheet.worksheet('Tareas Activas')
                 
-                datos_tarea = google_sheets.obtener_tarea_activa_por_usuario(sheet_activas, user_id)
+                datos_tarea = obtener_tarea_activa_por_usuario(sheet_activas, user_id)
                 if datos_tarea:
                     tarea_id = datos_tarea['tarea_id']
                 else:
@@ -734,7 +737,7 @@ class PausarReanudarButtonPersistent(discord.ui.Button):
                 spreadsheet = client.open_by_key(config.GOOGLE_SHEET_ID_TAREAS)
                 sheet_activas = spreadsheet.worksheet('Tareas Activas')
                 
-                datos_tarea = google_sheets.obtener_tarea_activa_por_usuario(sheet_activas, user_id)
+                datos_tarea = obtener_tarea_activa_por_usuario(sheet_activas, user_id)
                 if datos_tarea:
                     tarea_id = datos_tarea['tarea_id']
                 else:
@@ -752,7 +755,7 @@ class PausarReanudarButtonPersistent(discord.ui.Button):
             sheet_activas = spreadsheet.worksheet('Tareas Activas')
             sheet_historial = spreadsheet.worksheet('Historial')
             
-            datos_tarea = google_sheets.obtener_tarea_por_id(sheet_activas, tarea_id)
+            datos_tarea = obtener_tarea_por_id(sheet_activas, tarea_id)
             if not datos_tarea:
                 await interaction.followup.send('❌ No se encontró la tarea especificada.', ephemeral=True)
                 return
@@ -763,10 +766,10 @@ class PausarReanudarButtonPersistent(discord.ui.Button):
             
             if datos_tarea['estado'].lower() == 'en proceso':
                 # Pausar la tarea
-                google_sheets.pausar_tarea_por_id(sheet_activas, sheet_historial, tarea_id, str(interaction.user), fecha_actual)
+                pausar_tarea_por_id(sheet_activas, sheet_historial, tarea_id, str(interaction.user), fecha_actual)
                 
                 # Volver a obtener los datos actualizados
-                datos_tarea_actualizados = google_sheets.obtener_tarea_por_id(sheet_activas, tarea_id)
+                datos_tarea_actualizados = obtener_tarea_por_id(sheet_activas, tarea_id)
                 if not datos_tarea_actualizados:
                     await interaction.followup.send('❌ Error al obtener los datos actualizados de la tarea.', ephemeral=True)
                     return
@@ -792,10 +795,10 @@ class PausarReanudarButtonPersistent(discord.ui.Button):
                 
             elif datos_tarea['estado'].lower() == 'pausada':
                 # Reanudar la tarea
-                google_sheets.reanudar_tarea_por_id(sheet_activas, sheet_historial, tarea_id, str(interaction.user), fecha_actual)
+                reanudar_tarea_por_id(sheet_activas, sheet_historial, tarea_id, str(interaction.user), fecha_actual)
                 
                 # Volver a obtener los datos actualizados
-                datos_tarea_actualizados = google_sheets.obtener_tarea_por_id(sheet_activas, tarea_id)
+                datos_tarea_actualizados = obtener_tarea_por_id(sheet_activas, tarea_id)
                 if not datos_tarea_actualizados:
                     await interaction.followup.send('❌ Error al obtener los datos actualizados de la tarea.', ephemeral=True)
                     return
@@ -844,7 +847,7 @@ class FinalizarButtonPersistent(discord.ui.Button):
             spreadsheet = client.open_by_key(config.GOOGLE_SHEET_ID_TAREAS)
             sheet_activas = spreadsheet.worksheet('Tareas Activas')
             
-            datos_tarea = google_sheets.obtener_tarea_activa_por_usuario(sheet_activas, user_id)
+            datos_tarea = obtener_tarea_activa_por_usuario(sheet_activas, user_id)
             if not datos_tarea:
                 await interaction.response.send_message('❌ No se encontró una tarea activa para finalizar.', ephemeral=True)
                 return
