@@ -1106,6 +1106,7 @@ class CancelacionModal(discord.ui.Modal, title='Registrar Cancelación'):
             
             # Guardar en Google Sheets
             from utils.google_sheets import initialize_google_sheets
+            from utils.google_client_manager import get_sheets_client
             if not config.GOOGLE_CREDENTIALS_JSON or not config.SPREADSHEET_ID_CASOS or not config.GOOGLE_SHEET_RANGE_CANCELACIONES:
                 await interaction.response.send_message('❌ Error de configuración para Google Sheets.', ephemeral=True)
                 return
@@ -1233,6 +1234,7 @@ class ReclamosMLModal(discord.ui.Modal, title='Detalles del Reclamo ML'):
                 state_manager.delete_user_state(user_id, "reclamos_ml")
                 return
             from utils.google_sheets import initialize_google_sheets, check_if_pedido_exists
+            from utils.google_client_manager import get_sheets_client
             from datetime import datetime
             import pytz
             if not config.GOOGLE_CREDENTIALS_JSON:
@@ -1371,6 +1373,7 @@ class PiezaFaltanteModal(discord.ui.Modal, title='Registrar Pieza Faltante'):
                 await interaction.response.send_message('❌ Error: Todos los campos obligatorios deben estar completos.', ephemeral=True)
                 return
             from utils.google_sheets import initialize_google_sheets, check_if_pedido_exists
+            from utils.google_client_manager import get_sheets_client
             from datetime import datetime
             import pytz
             if not config.GOOGLE_CREDENTIALS_JSON:
