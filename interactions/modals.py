@@ -127,6 +127,134 @@ class FacturaAModal(discord.ui.Modal, title='Registrar Solicitud Factura A'):
         if not interaction.response.is_done():
             await interaction.response.send_message('✅ Tarea finalizada.', ephemeral=True)
 
+class FacturaBModal(discord.ui.Modal, title='Registrar Solicitud Factura B'):
+    def __init__(self):
+        super().__init__(custom_id='facturaBModal')
+        self.pedido = discord.ui.TextInput(
+            label="Número de pedido",
+            placeholder="Ingresa el número de pedido...",
+            custom_id="pedidoInput",
+            style=discord.TextStyle.short,
+            required=True,
+            max_length=100
+        )
+        self.caso = discord.ui.TextInput(
+            label="ID Caso Wise",
+            placeholder="Ingresa el ID del caso Wise...",
+            custom_id="casoInput",
+            style=discord.TextStyle.short,
+            required=True,
+            max_length=100
+        )
+        self.email = discord.ui.TextInput(
+            label="Email",
+            placeholder="ejemplo@email.com",
+            custom_id="emailInput",
+            style=discord.TextStyle.short,
+            required=True,
+            max_length=100
+        )
+        
+        # Agregar los componentes al modal
+        self.add_item(self.pedido)
+        self.add_item(self.caso)
+        self.add_item(self.email)
+
+    async def on_submit(self, interaction: discord.Interaction):
+        import config
+        import utils.state_manager as state_manager
+        from utils.state_manager import generar_solicitud_id, cleanup_expired_states, get_user_state
+        cleanup_expired_states()
+        try:
+            user_id = str(interaction.user.id)
+            solicitud_id = generar_solicitud_id(user_id)
+            pedido = self.pedido.value.strip()
+            caso = self.caso.value.strip()
+            email = self.email.value.strip()
+            
+            if not pedido or not caso or not email:
+                await interaction.response.send_message('❌ Error: Los campos Pedido, ID Caso Wise y Email son requeridos.', ephemeral=True)
+                return
+                
+            # Obtener el canal de compra del estado del usuario
+            user_state = get_user_state(user_id, "facturaB")
+            if not user_state or not user_state.get('canalCompra'):
+                await interaction.response.send_message('❌ Error: No se encontró el canal de compra seleccionado.', ephemeral=True)
+                return
+            canal_compra = user_state['canalCompra']
+            
+            if not config.GOOGLE_CREDENTIALS_JSON:
+                await interaction.response.send_message('❌ Error: Las credenciales de Google no están configuradas.', ephemeral=True)
+                return
+            if not config.SPREADSHEET_ID_FAC_A:
+                await interaction.response.send_message('❌ Error: El ID de la hoja de Factura B no está configurado.', ephemeral=True)
+                return
+                
+            from utils.google_sheets import initialize_google_sheets, check_if_pedido_exists
+            from datetime import datetime
+            import pytz
+            client = initialize_google_sheets(config.GOOGLE_CREDENTIALS_JSON)
+            spreadsheet = client.open_by_key(config.SPREADSHEET_ID_FAC_A)
+            sheet_range = getattr(config, 'SHEET_RANGE_FAC_B', 'FacB!A:G')
+            hoja_nombre = None
+            if '!' in sheet_range:
+                partes = sheet_range.split('!')
+                if len(partes) == 2:
+                    hoja_nombre = partes[0].strip("'")
+                    sheet_range_puro = partes[1]
+                else:
+                    hoja_nombre = None
+                    sheet_range_puro = sheet_range
+            else:
+                sheet_range_puro = sheet_range
+            if hoja_nombre:
+                sheet = spreadsheet.worksheet(hoja_nombre)
+            else:
+                sheet = spreadsheet.sheet1
+            rows = sheet.get(sheet_range_puro)
+            is_duplicate = check_if_pedido_exists(sheet, sheet_range_puro, pedido)
+            if is_duplicate:
+                await interaction.response.send_message(f'❌ El número de pedido **{pedido}** ya se encuentra registrado en la hoja de Factura B.', ephemeral=True)
+                return
+            tz = pytz.timezone('America/Argentina/Buenos_Aires')
+            now = datetime.now(tz)
+            fecha_hora = now.strftime('%d-%m-%Y %H:%M:%S')
+            header = rows[0] if rows else []
+            # Normalizar nombres de columnas
+            def normaliza_columna(nombre):
+                if not nombre:
+                    return ''
+                return str(nombre).strip().replace('\u200b', '').replace('\ufeff', '').lower()
+            # Buscar índices de columnas por nombre
+            fecha_col = next((i for i, h in enumerate(header) if normaliza_columna(h) == 'fecha de carga'), 0)
+            asesor_col = next((i for i, h in enumerate(header) if normaliza_columna(h) == 'asesor que carga'), 1)
+            pedido_col = next((i for i, h in enumerate(header) if normaliza_columna(h) == 'número de pedido'), 2)
+            caso_col = next((i for i, h in enumerate(header) if normaliza_columna(h) == 'id caso wise'), 3)
+            canal_col = next((i for i, h in enumerate(header) if normaliza_columna(h) == 'canal de compra'), 4)
+            email_col = next((i for i, h in enumerate(header) if normaliza_columna(h) == 'correo electronico'), 5)
+            # Crear fila con datos en las posiciones correctas
+            row_data = [''] * len(header)
+            row_data[fecha_col] = fecha_hora
+            row_data[asesor_col] = interaction.user.display_name
+            row_data[pedido_col] = pedido
+            row_data[caso_col] = caso
+            row_data[canal_col] = canal_compra
+            row_data[email_col] = email
+            sheet.append_row(row_data)
+            parent_folder_id = getattr(config, 'PARENT_DRIVE_FOLDER_ID', None)
+            if parent_folder_id:
+                state_manager.set_user_state(user_id, {"type": "facturaB", "pedido": pedido, "solicitud_id": solicitud_id, "timestamp": now.timestamp()}, "facturaB")
+            confirmation_message = '✅ **Solicitud de Factura B cargada correctamente en Google Sheets.**'
+            if parent_folder_id:
+                confirmation_message += '\n\n📎 **Próximo paso:** Envía los archivos adjuntos para esta solicitud en un **mensaje separado** aquí mismo en este canal.'
+            else:
+                confirmation_message += '\n\n⚠️ La carga de archivos adjuntos a Google Drive no está configurada en el bot para Factura B.'
+            await interaction.response.send_message(confirmation_message, ephemeral=True)
+        except Exception as error:
+            await interaction.response.send_message(f'❌ Hubo un error al procesar tu solicitud de Factura B. Detalles: {error}', ephemeral=True)
+        if not interaction.response.is_done():
+            await interaction.response.send_message('✅ Tarea finalizada.', ephemeral=True)
+
 class CasoModal(discord.ui.Modal, title='Detalles del Caso'):
     def __init__(self):
         super().__init__(custom_id='casoModal')

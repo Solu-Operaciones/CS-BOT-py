@@ -82,6 +82,33 @@ class InteractionCommands(commands.Cog):
                 'Hubo un error al abrir el formulario de solicitud de Factura A. Por favor, inténtalo de nuevo.', ephemeral=True)
 
     @maybe_guild_decorator()
+    @app_commands.command(name="factura-b", description="Solicita el registro de Factura B")
+    async def factura_b(self, interaction: discord.Interaction):
+        target_cat = get_target_category_id()
+        if target_cat and getattr(interaction.channel, 'category_id', None) != target_cat:
+            await interaction.response.send_message(
+                f"Este comando solo puede ser usado en la categoría <#{target_cat}>.", ephemeral=True)
+            return
+        # Restricción de canal
+        if hasattr(config, 'TARGET_CHANNEL_ID_FAC_B') and str(interaction.channel_id) != str(config.TARGET_CHANNEL_ID_FAC_B):
+            await interaction.response.send_message(
+                f"Este comando solo puede ser usado en el canal <#{config.TARGET_CHANNEL_ID_FAC_B}>.", ephemeral=True)
+            return
+        try:
+            from interactions.select_menus import build_canal_compra_menu
+            view = build_canal_compra_menu()
+            await interaction.response.send_message(
+                '🧾 **Solicitud de Factura B**\n\nSelecciona el canal de compra para continuar:',
+                view=view,
+                ephemeral=True
+            )
+            print('Select menu de Canal de Compra mostrado al usuario.')
+        except Exception as error:
+            print('Error al mostrar el select menu de Canal de Compra:', error)
+            await interaction.response.send_message(
+                'Hubo un error al abrir el formulario de solicitud de Factura B. Por favor, inténtalo de nuevo.', ephemeral=True)
+
+    @maybe_guild_decorator()
     @app_commands.command(name="tracking", description="Consulta el estado de un envío de Andreani")
     @app_commands.describe(numero="Número de seguimiento de Andreani")
     async def tracking(self, interaction: discord.Interaction, numero: str):

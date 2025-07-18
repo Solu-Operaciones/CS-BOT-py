@@ -113,6 +113,37 @@ class TipoReclamosMLView(discord.ui.View):
 def build_tipo_reclamos_ml_menu():
     return TipoReclamosMLView()
 
+class CanalCompraSelect(discord.ui.Select):
+    def __init__(self):
+        options = [
+            discord.SelectOption(label='Store BGH', value='Store BGH'),
+            discord.SelectOption(label='MELI', value='MELI'),
+            discord.SelectOption(label='BNA', value='BNA'),
+            discord.SelectOption(label='FRÁVEGA', value='FRÁVEGA'),
+            discord.SelectOption(label='MEGATONE', value='MEGATONE'),
+            discord.SelectOption(label='PROVINCIA', value='PROVINCIA'),
+            discord.SelectOption(label='CLIC', value='CLIC'),
+            discord.SelectOption(label='AFINIDAD', value='AFINIDAD'),
+            discord.SelectOption(label='Carrefour', value='Carrefour'),
+        ]
+        super().__init__(placeholder='Selecciona el canal de compra...', min_values=1, max_values=1, options=options, custom_id='canalCompraSelect')
+
+    async def callback(self, interaction: discord.Interaction):
+        from utils.state_manager import set_user_state
+        user_id = str(interaction.user.id)
+        selected_canal = self.values[0]
+        set_user_state(user_id, {"type": "facturaB", "paso": 2, "canalCompra": selected_canal}, "facturaB")
+        from interactions.modals import FacturaBModal
+        await interaction.response.send_modal(FacturaBModal())
+
+class CanalCompraView(discord.ui.View):
+    def __init__(self):
+        super().__init__(timeout=120)
+        self.add_item(CanalCompraSelect())
+
+def build_canal_compra_menu():
+    return CanalCompraView()
+
 class SelectMenus(commands.Cog):
     def __init__(self, bot):
         self.bot = bot

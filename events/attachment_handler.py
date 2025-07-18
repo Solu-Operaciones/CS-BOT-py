@@ -162,12 +162,23 @@ class AttachmentHandler(commands.Cog):
         
         user_id = str(message.author.id)
         cleanup_expired_states()
-        pending_data = get_user_state(user_id, "facturaA")
+        pending_data_factura_a = get_user_state(user_id, "facturaA")
+        pending_data_factura_b = get_user_state(user_id, "facturaB")
         
-        # Solo manejar si el usuario está esperando adjuntos para Factura A
-        if pending_data and pending_data.get('type') == 'facturaA' and message.attachments:
-            # Eliminar el estado SOLO si vamos a procesar el mensaje
-            delete_user_state(user_id, "facturaA")
+        # Solo manejar si el usuario está esperando adjuntos para Factura A o Factura B
+        if ((pending_data_factura_a and pending_data_factura_a.get('type') == 'facturaA') or 
+            (pending_data_factura_b and pending_data_factura_b.get('type') == 'facturaB')) and message.attachments:
+            
+            # Determinar qué tipo de factura es y obtener los datos correspondientes
+            if pending_data_factura_a and pending_data_factura_a.get('type') == 'facturaA':
+                pending_data = pending_data_factura_a
+                factura_type = 'facturaA'
+                delete_user_state(user_id, "facturaA")
+            else:
+                pending_data = pending_data_factura_b
+                factura_type = 'facturaB'
+                delete_user_state(user_id, "facturaB")
+            
             pedido = pending_data.get('pedido')
             solicitud_id = pending_data.get('solicitud_id')
             if not pedido:
@@ -188,7 +199,7 @@ class AttachmentHandler(commands.Cog):
                     print(f"✅ PARENT_DRIVE_FOLDER_ID configurado: '{parent_folder_id}'")
                 
                 # Opción 1: Crear carpeta específica para el pedido
-                folder_name = f'FacturaA_{pedido}'
+                folder_name = f'{factura_type.capitalize()}_{pedido}'
                 print(f"🔍 DEBUG - Nombre de carpeta a crear: '{folder_name}'")
                 print(f"🔍 DEBUG - Llamando find_or_create_drive_folder con parent_id: '{parent_folder_id}'")
                 
@@ -238,7 +249,12 @@ class AttachmentHandler(commands.Cog):
                     import utils.google_sheets as google_sheets
                     client = google_sheets.initialize_google_sheets(config.GOOGLE_CREDENTIALS_JSON)
                     spreadsheet = client.open_by_key(config.SPREADSHEET_ID_FAC_A)
-                    sheet_range = getattr(config, 'SHEET_RANGE_FAC_A', 'A:E')
+                    
+                    # Usar el rango correspondiente según el tipo de factura
+                    if factura_type == 'facturaA':
+                        sheet_range = getattr(config, 'SHEET_RANGE_FAC_A', 'A:E')
+                    else:  # facturaB
+                        sheet_range = getattr(config, 'SHEET_RANGE_FAC_B', 'FacB!A:G')
                     
                     # Determinar la hoja
                     hoja_nombre = None
@@ -268,7 +284,7 @@ class AttachmentHandler(commands.Cog):
                     
                     if rows and len(rows) > 1:
                         header_row = rows[0]
-                        # Buscar columnas robustamente
+                        # Buscar columnas robustamente según el tipo de factura
                         pedido_col = None
                         caso_col = None
                         fecha_col = None
@@ -276,10 +292,16 @@ class AttachmentHandler(commands.Cog):
                             norm = normaliza_columna(col_name)
                             if norm == normaliza_columna('Número de pedido'):
                                 pedido_col = idx
-                            if norm == normaliza_columna('Caso'):
-                                caso_col = idx
-                            if norm == normaliza_columna('Fecha/Hora'):
-                                fecha_col = idx
+                            if factura_type == 'facturaA':
+                                if norm == normaliza_columna('Caso'):
+                                    caso_col = idx
+                                if norm == normaliza_columna('Fecha/Hora'):
+                                    fecha_col = idx
+                            else:  # facturaB
+                                if norm == normaliza_columna('ID Caso Wise'):
+                                    caso_col = idx
+                                if norm == normaliza_columna('Fecha de carga'):
+                                    fecha_col = idx
                         if pedido_col is not None:
                             for row in rows[1:]:
                                 if len(row) > pedido_col and str(row[pedido_col]).strip() == pedido:
@@ -290,9 +312,10 @@ class AttachmentHandler(commands.Cog):
                                     break
                 
                 # Crear y enviar el embed
+                factura_title = 'Factura A' if factura_type == 'facturaA' else 'Factura B'
                 embed = discord.Embed(
-                    title='🧾 Nueva Solicitud de Factura A',
-                    description=f'Se ha cargado una nueva solicitud de Factura A con archivos adjuntos.',
+                    title=f'🧾 Nueva Solicitud de {factura_title}',
+                    description=f'Se ha cargado una nueva solicitud de {factura_title} con archivos adjuntos.',
                     color=discord.Color.blue(),
                     timestamp=datetime.now()
                 )
@@ -304,7 +327,7 @@ class AttachmentHandler(commands.Cog):
                 )
                 
                 embed.add_field(
-                    name='📝 Número de Caso',
+                    name='📝 ID Caso Wise' if factura_type == 'facturaB' else '📝 Número de Caso',
                     value=caso_info,
                     inline=True
                 )
@@ -336,19 +359,19 @@ class AttachmentHandler(commands.Cog):
                 bo_role_id = getattr(config, 'SETUP_BO_ROL', None)
                 if bo_role_id:
                     await message.channel.send(
-                        content=f'<@&{bo_role_id}> Nueva solicitud de Factura A cargada',
+                        content=f'<@&{bo_role_id}> Nueva solicitud de {factura_title} cargada',
                         embed=embed,
                         view=view
                     )
                 else:
                     await message.channel.send(
-                        content='Nueva solicitud de Factura A cargada',
+                        content=f'Nueva solicitud de {factura_title} cargada',
                         embed=embed,
                         view=view
                     )
                 
             except Exception as error:
-                print(f'Error al subir adjuntos a Google Drive para Factura A: {error}')
+                print(f'Error al subir adjuntos a Google Drive para {factura_title}: {error}')
                 await message.reply(f'❌ Hubo un error al subir los archivos a Google Drive. Detalles: {error}')
 
 async def setup(bot):
