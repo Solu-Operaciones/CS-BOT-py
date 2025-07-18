@@ -192,6 +192,7 @@ class FacturaBModal(discord.ui.Modal, title='Registrar Solicitud Factura B'):
                 return
                 
             from utils.google_sheets import initialize_google_sheets, check_if_pedido_exists
+            from utils.google_client_manager import get_sheets_client
             from datetime import datetime
             import pytz
             client = get_sheets_client()
@@ -635,7 +636,7 @@ class CantidadCasosModal(discord.ui.Modal, title='Finalizar Tarea'):
 
     async def procesar_finalizacion(self, interaction, msg):
         import config
-        import utils.google_sheets as google_sheets
+        from utils.google_client_manager import get_sheets_client
         from tasks.panel import crear_embed_tarea
         from utils.state_manager import get_user_state, delete_user_state
         from datetime import datetime
