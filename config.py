@@ -38,10 +38,13 @@ ANDREANI_AUTH_HEADER = os.getenv('ANDREANI_API_AUTH')
 # Google Services
 raw = os.getenv('GOOGLE_CREDENTIALS_PATH') or os.getenv('GOOGLE_CREDENTIALS_JSON')
 if not raw:
-    print("Error CRÍTICO: no se ha proporcionado ni GOOGLE_CREDENTIALS_PATH ni GOOGLE_CREDENTIALS_JSON.")
-    sys.exit(1)
+    print("⚠️ Advertencia: no se ha proporcionado ni GOOGLE_CREDENTIALS_PATH ni GOOGLE_CREDENTIALS_JSON.")
+    print("El bot funcionará sin las APIs de Google.")
+    GOOGLE_CREDENTIALS = None
+    GOOGLE_CREDENTIALS_JSON = None
+    GOOGLE_CREDENTIALS_PATH = None
 
-if raw.lstrip().startswith('{'):
+elif raw.lstrip().startswith('{'):
     # Llegó el JSON completo en ENV
     try:
         GOOGLE_CREDENTIALS = json.loads(raw)
@@ -95,8 +98,8 @@ except ValueError:
 
 # Validaciones básicas
 if not TOKEN:
-    print("Error CRÍTICO: La variable de entorno DISCORD_TOKEN no está configurada.")
-    exit(1)
+    print("⚠️ Advertencia: La variable de entorno DISCORD_TOKEN no está configurada.")
+    print("El bot no podrá conectarse a Discord sin el token.")
 
 if not GUILD_ID:
     print("Advertencia: GUILD_ID no configurado. Algunas funcionalidades podrían no funcionar correctamente.")

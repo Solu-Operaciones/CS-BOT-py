@@ -3,7 +3,6 @@ from discord.ext import commands, tasks
 import asyncio
 import config
 import logging
-from utils.google_sheets import check_sheet_for_errors
 from utils.google_client_manager import initialize_google_clients, get_sheets_client, get_drive_client
 from utils.andreani import get_andreani_tracking
 from utils.discord_logger import setup_discord_logging, log_exception
@@ -33,10 +32,6 @@ async def on_ready():
     # Inicializar APIs de Google
     global sheets_instance, drive_instance
     try:
-        if not config.GOOGLE_CREDENTIALS:
-            print("Error CRÍTICO: credenciales de Google no cargadas.")
-            return
-
         # Usar el gestor centralizado de clientes de Google
         initialize_google_clients()
         sheets_instance = get_sheets_client()
@@ -46,10 +41,17 @@ async def on_ready():
         bot.sheets_instance = sheets_instance
         bot.drive_instance = drive_instance
         
-        print("APIs de Google inicializadas correctamente.")
+        if sheets_instance and drive_instance:
+            print("✅ APIs de Google inicializadas correctamente.")
+        else:
+            print("⚠️ APIs de Google no disponibles, pero el bot continuará funcionando.")
     except Exception as error:
-        print("Error al inicializar APIs de Google:", error)
-        return
+        print(f"⚠️ Error al inicializar APIs de Google: {error}")
+        print("El bot continuará funcionando sin las APIs de Google.")
+        sheets_instance = None
+        drive_instance = None
+        bot.sheets_instance = None
+        bot.drive_instance = None
 
     # Cargar el manual en memoria
     if config.MANUAL_DRIVE_FILE_ID and drive_instance:
@@ -89,7 +91,9 @@ async def on_ready():
 @tasks.loop(minutes=config.ERROR_CHECK_INTERVAL_MIN)
 async def check_errors():
     """Tarea periódica para verificar errores en múltiples rangos de Google Sheets"""
-    if sheets_instance:
+    if not sheets_instance:
+        print("⚠️ Verificación de errores omitida: instancia de Sheets no disponible")
+        return
         try:
             if not config.SPREADSHEET_ID_CASOS:
                 print("Error: SPREADSHEET_ID_CASOS no está configurado")
@@ -117,6 +121,7 @@ async def check_errors():
                     print(f"Error al abrir la hoja {hoja_nombre or '[default]'}: {sheet_error}")
                     continue
                 try:
+                    from utils.google_sheets import check_sheet_for_errors
                     await check_sheet_for_errors(
                         bot,
                         sheet,
