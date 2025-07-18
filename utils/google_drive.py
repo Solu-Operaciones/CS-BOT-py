@@ -198,7 +198,7 @@ def upload_file_to_drive(drive_service, folder_id: str, attachment) -> dict:
         print(f"🔍 DEBUG - Metadata para subir archivo: {file_metadata}")
         print(f"🔍 DEBUG - Folder ID donde se subirá: '{folder_id}'")
         
-        media = MediaFileUpload(path_listing, resumable=True)        
+        media = MediaFileUpload(attachment.url, resumable=True)        
         print(f"🔍 DEBUG - Subiendo archivo {attachment.filename} a Drive en la carpeta {folder_id}...")
         uploaded_file = drive_service.files().create(body=file_metadata, media_body=media, fields='id, name').execute()
         print(f"Archivo '{uploaded_file['name']}' subido con éxito. ID de Drive: {uploaded_file['id']}")
