@@ -162,22 +162,12 @@ class AttachmentHandler(commands.Cog):
         
         user_id = str(message.author.id)
         cleanup_expired_states()
-        pending_data_factura_a = get_user_state(user_id, "facturaA")
-        pending_data_factura_b = get_user_state(user_id, "facturaB")
+        pending_data = get_user_state(user_id, "facturaA")
         
-        # Solo manejar si el usuario está esperando adjuntos para Factura A o Factura B
-        if ((pending_data_factura_a and pending_data_factura_a.get('type') == 'facturaA') or 
-            (pending_data_factura_b and pending_data_factura_b.get('type') == 'facturaB')) and message.attachments:
-            
-            # Determinar qué tipo de factura es y obtener los datos correspondientes
-            if pending_data_factura_a and pending_data_factura_a.get('type') == 'facturaA':
-                pending_data = pending_data_factura_a
-                factura_type = 'facturaA'
-                delete_user_state(user_id, "facturaA")
-            else:
-                pending_data = pending_data_factura_b
-                factura_type = 'facturaB'
-                delete_user_state(user_id, "facturaB")
+        # Solo manejar si el usuario está esperando adjuntos para Factura A
+        if pending_data and pending_data.get('type') == 'facturaA' and message.attachments:
+            # Eliminar el estado SOLO si vamos a procesar el mensaje
+            delete_user_state(user_id, "facturaA")
             
             pedido = pending_data.get('pedido')
             solicitud_id = pending_data.get('solicitud_id')
@@ -199,7 +189,7 @@ class AttachmentHandler(commands.Cog):
                     print(f"✅ PARENT_DRIVE_FOLDER_ID configurado: '{parent_folder_id}'")
                 
                 # Opción 1: Crear carpeta específica para el pedido
-                folder_name = f'{factura_type.capitalize()}_{pedido}'
+                folder_name = f'FacturaA_{pedido}'
                 print(f"🔍 DEBUG - Nombre de carpeta a crear: '{folder_name}'")
                 print(f"🔍 DEBUG - Llamando find_or_create_drive_folder con parent_id: '{parent_folder_id}'")
                 
@@ -241,127 +231,126 @@ class AttachmentHandler(commands.Cog):
                 await message.reply(success_message)
                 
                 # Solo enviar embed con botón de confirmación para Factura A
-                if factura_type == 'facturaA':
-                    # Buscar información del caso en Google Sheets para crear el embed
-                    if not config.GOOGLE_CREDENTIALS_JSON or not config.SPREADSHEET_ID_FAC_A:
-                        print("Advertencia: Credenciales de Google no configuradas para buscar información del caso")
-                        caso_info = "N/A"
-                        fecha_carga = "N/A"
-                    else:
-                        import utils.google_sheets as google_sheets
-                        client = google_sheets.initialize_google_sheets(config.GOOGLE_CREDENTIALS_JSON)
-                        spreadsheet = client.open_by_key(config.SPREADSHEET_ID_FAC_A)
-                        sheet_range = getattr(config, 'SHEET_RANGE_FAC_A', 'A:E')
-                        
-                        # Determinar la hoja
-                        hoja_nombre = None
-                        if '!' in sheet_range:
-                            partes = sheet_range.split('!')
-                            if len(partes) == 2:
-                                hoja_nombre = partes[0].strip("'")
-                                sheet_range_puro = partes[1]
-                            else:
-                                hoja_nombre = None
-                                sheet_range_puro = sheet_range
+                # Buscar información del caso en Google Sheets para crear el embed
+                if not config.GOOGLE_CREDENTIALS_JSON or not config.SPREADSHEET_ID_FAC_A:
+                    print("Advertencia: Credenciales de Google no configuradas para buscar información del caso")
+                    caso_info = "N/A"
+                    fecha_carga = "N/A"
+                else:
+                    import utils.google_sheets as google_sheets
+                    client = google_sheets.initialize_google_sheets(config.GOOGLE_CREDENTIALS_JSON)
+                    spreadsheet = client.open_by_key(config.SPREADSHEET_ID_FAC_A)
+                    sheet_range = getattr(config, 'SHEET_RANGE_FAC_A', 'A:E')
+                    
+                    # Determinar la hoja
+                    hoja_nombre = None
+                    if '!' in sheet_range:
+                        partes = sheet_range.split('!')
+                        if len(partes) == 2:
+                            hoja_nombre = partes[0].strip("'")
+                            sheet_range_puro = partes[1]
                         else:
+                            hoja_nombre = None
                             sheet_range_puro = sheet_range
-                        
-                        if hoja_nombre:
-                            sheet = spreadsheet.worksheet(hoja_nombre)
-                        else:
-                            sheet = spreadsheet.sheet1
-                        
-                        # Buscar la fila del pedido para obtener información completa
-                        rows = sheet.get(sheet_range_puro)
-                        caso_info = "N/A"
-                        fecha_carga = "N/A"
-                        
-                        def normaliza_columna(nombre):
-                            return str(nombre).strip().replace(' ', '').replace('/', '').replace('-', '').lower()
-                        
-                        if rows and len(rows) > 1:
-                            header_row = rows[0]
-                            # Buscar columnas robustamente
-                            pedido_col = None
-                            caso_col = None
-                            fecha_col = None
-                            for idx, col_name in enumerate(header_row):
-                                norm = normaliza_columna(col_name)
-                                if norm == normaliza_columna('Número de pedido'):
-                                    pedido_col = idx
-                                if norm == normaliza_columna('Caso'):
-                                    caso_col = idx
-                                if norm == normaliza_columna('Fecha/Hora'):
-                                    fecha_col = idx
-                            if pedido_col is not None:
-                                for row in rows[1:]:
-                                    if len(row) > pedido_col and str(row[pedido_col]).strip() == pedido:
-                                        if caso_col is not None and len(row) > caso_col:
-                                            caso_info = str(row[caso_col]).replace('#', '')
-                                        if fecha_col is not None and len(row) > fecha_col:
-                                            fecha_carga = str(row[fecha_col])
-                                        break
-                    
-                    # Crear y enviar el embed solo para Factura A
-                    embed = discord.Embed(
-                        title='🧾 Nueva Solicitud de Factura A',
-                        description=f'Se ha cargado una nueva solicitud de Factura A con archivos adjuntos.',
-                        color=discord.Color.blue(),
-                        timestamp=datetime.now()
-                    )
-                    
-                    embed.add_field(
-                        name='📋 Número de Pedido',
-                        value=pedido,
-                        inline=True
-                    )
-                    
-                    embed.add_field(
-                        name='📝 Número de Caso',
-                        value=caso_info,
-                        inline=True
-                    )
-                    
-                    embed.add_field(
-                        name='👤 Agente',
-                        value=message.author.display_name,
-                        inline=True
-                    )
-                    
-                    embed.add_field(
-                        name='📅 Fecha de Carga',
-                        value=fecha_carga,
-                        inline=True
-                    )
-                    
-                    embed.add_field(
-                        name='📎 Archivos',
-                        value=file_names,
-                        inline=False
-                    )
-                    
-                    embed.set_footer(text='Presiona el botón para marcar como cargada')
-                    
-                    # Crear la vista con el botón
-                    view = SolicitudCargadaView(pedido, caso_info, message.author.display_name, fecha_carga, str(message.id))
-                    
-                    # Enviar el embed mencionando al rol configurado
-                    bo_role_id = getattr(config, 'SETUP_BO_ROL', None)
-                    if bo_role_id:
-                        await message.channel.send(
-                            content=f'<@&{bo_role_id}> Nueva solicitud de Factura A cargada',
-                            embed=embed,
-                            view=view
-                        )
                     else:
-                        await message.channel.send(
-                            content='Nueva solicitud de Factura A cargada',
-                            embed=embed,
-                            view=view
-                        )
+                        sheet_range_puro = sheet_range
+                    
+                    if hoja_nombre:
+                        sheet = spreadsheet.worksheet(hoja_nombre)
+                    else:
+                        sheet = spreadsheet.sheet1
+                    
+                    # Buscar la fila del pedido para obtener información completa
+                    rows = sheet.get(sheet_range_puro)
+                    caso_info = "N/A"
+                    fecha_carga = "N/A"
+                    
+                    def normaliza_columna(nombre):
+                        return str(nombre).strip().replace(' ', '').replace('/', '').replace('-', '').lower()
+                    
+                    if rows and len(rows) > 1:
+                        header_row = rows[0]
+                        # Buscar columnas robustamente
+                        pedido_col = None
+                        caso_col = None
+                        fecha_col = None
+                        for idx, col_name in enumerate(header_row):
+                            norm = normaliza_columna(col_name)
+                            if norm == normaliza_columna('Número de pedido'):
+                                pedido_col = idx
+                            if norm == normaliza_columna('Caso'):
+                                caso_col = idx
+                            if norm == normaliza_columna('Fecha/Hora'):
+                                fecha_col = idx
+                        if pedido_col is not None:
+                            for row in rows[1:]:
+                                if len(row) > pedido_col and str(row[pedido_col]).strip() == pedido:
+                                    if caso_col is not None and len(row) > caso_col:
+                                        caso_info = str(row[caso_col]).replace('#', '')
+                                    if fecha_col is not None and len(row) > fecha_col:
+                                        fecha_carga = str(row[fecha_col])
+                                    break
+                
+                # Crear y enviar el embed solo para Factura A
+                embed = discord.Embed(
+                    title='🧾 Nueva Solicitud de Factura A',
+                    description=f'Se ha cargado una nueva solicitud de Factura A con archivos adjuntos.',
+                    color=discord.Color.blue(),
+                    timestamp=datetime.now()
+                )
+                
+                embed.add_field(
+                    name='📋 Número de Pedido',
+                    value=pedido,
+                    inline=True
+                )
+                
+                embed.add_field(
+                    name='📝 Número de Caso',
+                    value=caso_info,
+                    inline=True
+                )
+                
+                embed.add_field(
+                    name='👤 Agente',
+                    value=message.author.display_name,
+                    inline=True
+                )
+                
+                embed.add_field(
+                    name='📅 Fecha de Carga',
+                    value=fecha_carga,
+                    inline=True
+                )
+                
+                embed.add_field(
+                    name='📎 Archivos',
+                    value=file_names,
+                    inline=False
+                )
+                
+                embed.set_footer(text='Presiona el botón para marcar como cargada')
+                
+                # Crear la vista con el botón
+                view = SolicitudCargadaView(pedido, caso_info, message.author.display_name, fecha_carga, str(message.id))
+                
+                # Enviar el embed mencionando al rol configurado
+                bo_role_id = getattr(config, 'SETUP_BO_ROL', None)
+                if bo_role_id:
+                    await message.channel.send(
+                        content=f'<@&{bo_role_id}> Nueva solicitud de Factura A cargada',
+                        embed=embed,
+                        view=view
+                    )
+                else:
+                    await message.channel.send(
+                        content='Nueva solicitud de Factura A cargada',
+                        embed=embed,
+                        view=view
+                    )
                 
             except Exception as error:
-                print(f'Error al subir adjuntos a Google Drive para {factura_type}: {error}')
+                print(f'Error al subir adjuntos a Google Drive para Factura A: {error}')
                 await message.reply(f'❌ Hubo un error al subir los archivos a Google Drive. Detalles: {error}')
 
 async def setup(bot):

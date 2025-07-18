@@ -241,14 +241,7 @@ class FacturaBModal(discord.ui.Modal, title='Registrar Solicitud Factura B'):
             row_data[canal_col] = canal_compra
             row_data[email_col] = email
             sheet.append_row(row_data)
-            parent_folder_id = getattr(config, 'PARENT_DRIVE_FOLDER_ID', None)
-            if parent_folder_id:
-                state_manager.set_user_state(user_id, {"type": "facturaB", "pedido": pedido, "solicitud_id": solicitud_id, "timestamp": now.timestamp()}, "facturaB")
             confirmation_message = '✅ **Solicitud de Factura B cargada correctamente en Google Sheets.**'
-            if parent_folder_id:
-                confirmation_message += '\n\n📎 **Próximo paso:** Envía los archivos adjuntos para esta solicitud en un **mensaje separado** aquí mismo en este canal.'
-            else:
-                confirmation_message += '\n\n⚠️ La carga de archivos adjuntos a Google Drive no está configurada en el bot para Factura B.'
             await interaction.response.send_message(confirmation_message, ephemeral=True)
         except Exception as error:
             await interaction.response.send_message(f'❌ Hubo un error al procesar tu solicitud de Factura B. Detalles: {error}', ephemeral=True)
