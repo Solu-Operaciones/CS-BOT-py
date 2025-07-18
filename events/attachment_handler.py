@@ -333,7 +333,7 @@ class AttachmentHandler(commands.Cog):
                 view = SolicitudCargadaView(pedido, caso_info, message.author.display_name, fecha_carga, str(message.id))
                 
                 # Enviar el embed mencionando a Bgh Back Office
-                Bgh_Back_Office_id = 1300888951619584101 
+                Bgh_Back_Office_id = 1388209760314331297 
                 await message.channel.send(
                     content=f'<@&{Bgh_Back_Office_id}> Nueva solicitud de Factura A cargada',
                     embed=embed,

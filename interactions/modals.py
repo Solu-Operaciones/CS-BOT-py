@@ -86,18 +86,7 @@ class FacturaAModal(discord.ui.Modal, title='Registrar Solicitud Factura A'):
             else:
                 sheet = spreadsheet.sheet1
             rows = sheet.get(sheet_range_puro)
-            
-            # Si la hoja está vacía, crear el header
-            if not rows or len(rows) == 0:
-                print(f"🔍 DEBUG - Hoja {hoja_nombre or 'Sheet1'} está vacía. Creando header...")
-                header = ['Número de Pedido', 'Fecha/Hora', 'Caso', 'Email', 'Observaciones']
-                sheet.append_row(header)
-                rows = [header]
-                print(f"✅ Header creado en hoja {hoja_nombre or 'Sheet1'}")
-                # Si acabamos de crear el header, no puede haber duplicados
-                is_duplicate = False
-            else:
-                is_duplicate = check_if_pedido_exists(sheet, sheet_range_puro, pedido)
+            is_duplicate = check_if_pedido_exists(sheet, sheet_range_puro, pedido)
             if is_duplicate:
                 await interaction.response.send_message(f'❌ El número de pedido **{pedido}** ya se encuentra registrado en la hoja de Factura A.', ephemeral=True)
                 return
@@ -135,6 +124,8 @@ class FacturaAModal(discord.ui.Modal, title='Registrar Solicitud Factura A'):
             await interaction.response.send_message(confirmation_message, ephemeral=True)
         except Exception as error:
             await interaction.response.send_message(f'❌ Hubo un error al procesar tu solicitud de Factura A. Detalles: {error}', ephemeral=True)
+        if not interaction.response.is_done():
+            await interaction.response.send_message('✅ Tarea finalizada.', ephemeral=True)
 
 class CasoModal(discord.ui.Modal, title='Detalles del Caso'):
     def __init__(self):
@@ -275,6 +266,8 @@ class CasoModal(discord.ui.Modal, title='Detalles del Caso'):
             print('Error general durante el procesamiento del modal de caso (on_submit):', error)
             await interaction.response.send_message(f'❌ Hubo un error al procesar tu caso. Detalles: {error}', ephemeral=True)
             state_manager.delete_user_state(str(interaction.user.id), "cambios_devoluciones")
+        if not interaction.response.is_done():
+            await interaction.response.send_message('✅ Tarea finalizada.', ephemeral=True)
 
 class TrackingModal(discord.ui.Modal, title='Consulta de Tracking'):
     def __init__(self):
@@ -349,6 +342,8 @@ class TrackingModal(discord.ui.Modal, title='Consulta de Tracking'):
             
         except Exception as error:
             await interaction.followup.send(f'❌ Hubo un error al consultar el tracking. Detalles: {error}', ephemeral=True)
+        if not interaction.response.is_done():
+            await interaction.response.send_message('✅ Tarea finalizada.', ephemeral=True)
 
 def clean_html(raw_html):
     """Limpia etiquetas HTML de un string"""
@@ -448,6 +443,8 @@ class BuscarCasoModal(discord.ui.Modal, title='Búsqueda de Caso'):
         except Exception as error:
             print('Error general durante la búsqueda de casos en Google Sheets:', error)
             await interaction.followup.send('❌ Hubo un error al realizar la búsqueda de casos. Por favor, inténtalo de nuevo o contacta a un administrador.', ephemeral=False)
+        if not interaction.response.is_done():
+            await interaction.response.send_message('✅ Tarea finalizada.', ephemeral=True)
 
 class CantidadCasosModal(discord.ui.Modal, title='Finalizar Tarea'):
     def __init__(self, tarea_id, user_id):
@@ -720,6 +717,8 @@ class SolicitudEnviosModal(discord.ui.Modal, title='Detalles de la Solicitud de 
             print('Error general durante el procesamiento del modal de solicitud de envíos (on_submit):', error)
             await interaction.response.send_message(f'❌ Hubo un error al procesar tu solicitud. Detalles: {error}', ephemeral=True)
             state_manager.delete_user_state(str(interaction.user.id), "solicitudes_envios")
+        if not interaction.response.is_done():
+            await interaction.response.send_message('✅ Tarea finalizada.', ephemeral=True)
 
 class ReembolsoModal(discord.ui.Modal, title='Detalles del Reembolso'):
     def __init__(self):
@@ -877,6 +876,8 @@ class ReembolsoModal(discord.ui.Modal, title='Detalles del Reembolso'):
             print('Error general durante el procesamiento del modal de reembolsos (on_submit):', error)
             await interaction.response.send_message(f'❌ Hubo un error al procesar tu solicitud. Detalles: {error}', ephemeral=True)
             state_manager.delete_user_state(str(interaction.user.id), "reembolsos")
+        if not interaction.response.is_done():
+            await interaction.response.send_message('✅ Tarea finalizada.', ephemeral=True)
 
 class CancelacionModal(discord.ui.Modal, title='Registrar Cancelación'):
     def __init__(self):
@@ -889,14 +890,6 @@ class CancelacionModal(discord.ui.Modal, title='Registrar Cancelación'):
             required=True,
             max_length=100
         )
-        self.motivo_cancelacion = discord.ui.TextInput(
-            label="Motivo de Cancelación",
-            placeholder="Ingresa el motivo de la cancelación...",
-            custom_id="cancelacionMotivoInput",
-            style=discord.TextStyle.paragraph,
-            required=True,
-            max_length=500
-        )
         self.observaciones = discord.ui.TextInput(
             label="Observaciones",
             placeholder="Observaciones (opcional)",
@@ -906,7 +899,6 @@ class CancelacionModal(discord.ui.Modal, title='Registrar Cancelación'):
             max_length=1000
         )
         self.add_item(self.pedido)
-        self.add_item(self.motivo_cancelacion)
         self.add_item(self.observaciones)
 
     async def on_submit(self, interaction: discord.Interaction):
@@ -917,8 +909,8 @@ class CancelacionModal(discord.ui.Modal, title='Registrar Cancelación'):
         try:
             user_id = str(interaction.user.id)
             pending_data = state_manager.get_user_state(user_id, "cancelaciones")
+            tipo_cancelacion = pending_data.get('tipoCancelacion', 'CANCELAR') if pending_data else 'CANCELAR'
             pedido = self.pedido.value.strip()
-            motivo_cancelacion = self.motivo_cancelacion.value.strip()
             observaciones = self.observaciones.value.strip()
             agente = interaction.user.display_name
             tz = pytz.timezone('America/Argentina/Buenos_Aires')
@@ -958,7 +950,6 @@ class CancelacionModal(discord.ui.Modal, title='Registrar Cancelación'):
             idx_solicitud = next((i for i, col in enumerate(header) if normaliza_columna(col) == normaliza_columna('SOLICITUD')), None)
             idx_frenado = next((i for i, col in enumerate(header) if normaliza_columna(col) == normaliza_columna('FRENADO')), None)
             idx_reembolso = next((i for i, col in enumerate(header) if normaliza_columna(col) == normaliza_columna('REEMBOLSO')), None)
-            idx_motivo = next((i for i, col in enumerate(header) if normaliza_columna(col) == normaliza_columna('MOTIVO DE CANCELACIÓN')), None)
             idx_agente_back = next((i for i, col in enumerate(header) if normaliza_columna(col) == normaliza_columna('AGENTE BACK')), None)
             idx_observaciones = next((i for i, col in enumerate(header) if normaliza_columna(col) == normaliza_columna('OBSERVACIONES')), None)
             # Preparar la fila
@@ -970,9 +961,7 @@ class CancelacionModal(discord.ui.Modal, title='Registrar Cancelación'):
             if idx_fecha is not None:
                 row_data[idx_fecha] = fecha_hora
             if idx_solicitud is not None:
-                row_data[idx_solicitud] = 'CANCELAR'  # Siempre CANCELAR
-            if idx_motivo is not None:
-                row_data[idx_motivo] = motivo_cancelacion
+                row_data[idx_solicitud] = tipo_cancelacion
             if idx_frenado is not None:
                 row_data[idx_frenado] = 'Pendiente'
             if idx_reembolso is not None:
@@ -982,7 +971,7 @@ class CancelacionModal(discord.ui.Modal, title='Registrar Cancelación'):
             if idx_observaciones is not None:
                 row_data[idx_observaciones] = observaciones
             sheet.append_row(row_data)
-            confirmation_message = f"✅ **Cancelación registrada exitosamente**\n\n📋 **Detalles:**\n• **N° de Pedido:** {pedido}\n• **Motivo:** {motivo_cancelacion}\n• **Agente:** {agente}\n• **Fecha:** {fecha_hora}\n\nLa cancelación ha sido guardada en Google Sheets."
+            confirmation_message = f"✅ **Cancelación registrada exitosamente**\n\n📋 **Detalles:**\n• **N° de Pedido:** {pedido}\n• **Tipo:** {tipo_cancelacion}\n• **Agente:** {agente}\n• **Fecha:** {fecha_hora}\n\nLa cancelación ha sido guardada en Google Sheets."
             await interaction.response.send_message(confirmation_message, ephemeral=True)
             state_manager.delete_user_state(user_id, "cancelaciones")
         except Exception as error:
@@ -1111,6 +1100,8 @@ class ReclamosMLModal(discord.ui.Modal, title='Detalles del Reclamo ML'):
             print('Error general durante el procesamiento del modal de reclamos ML (on_submit):', error)
             await interaction.response.send_message(f'❌ Hubo un error al procesar tu reclamo. Detalles: {error}', ephemeral=True)
             state_manager.delete_user_state(str(interaction.user.id), "reclamos_ml")
+        if not interaction.response.is_done():
+            await interaction.response.send_message('✅ Tarea finalizada.', ephemeral=True)
 
 class PiezaFaltanteModal(discord.ui.Modal, title='Registrar Pieza Faltante'):
     def __init__(self):
@@ -1241,146 +1232,8 @@ class PiezaFaltanteModal(discord.ui.Modal, title='Registrar Pieza Faltante'):
             await interaction.response.send_message(confirmation_message, ephemeral=True)
         except Exception as error:
             await interaction.response.send_message(f'❌ Hubo un error al procesar tu caso. Detalles: {error}', ephemeral=True)
-
-class FacturaBModal(discord.ui.Modal, title='Registrar Factura B'):
-    def __init__(self):
-        super().__init__(custom_id='facturaBModal')
-        self.pedido = discord.ui.TextInput(
-            label="Número de Pedido",
-            placeholder="Ingresa el número de pedido...",
-            custom_id="facturaBPedidoInput",
-            style=discord.TextStyle.short,
-            required=True,
-            max_length=100
-        )
-        self.id_wise = discord.ui.TextInput(
-            label="ID Caso Wise",
-            placeholder="Ingresa el ID del caso Wise...",
-            custom_id="facturaBIdWiseInput",
-            style=discord.TextStyle.short,
-            required=True,
-            max_length=100
-        )
-        self.canal_compra = discord.ui.TextInput(
-            label="Canal de Compra",
-            placeholder="Store BGH, MELI, ICBC MALL, BNA, FRÁVEGA, MEGATONE, PROVINCIA, CLIC, AFINIDAD, Carrefour",
-            custom_id="facturaBCanalCompraInput",
-            style=discord.TextStyle.short,
-            required=True,
-            max_length=50
-        )
-        self.email_cliente = discord.ui.TextInput(
-            label="Email Cliente",
-            placeholder="ejemplo@email.com",
-            custom_id="facturaBEmailClienteInput",
-            style=discord.TextStyle.short,
-            required=True,
-            max_length=500
-        )
-        self.add_item(self.pedido)
-        self.add_item(self.id_wise)
-        self.add_item(self.canal_compra)
-        self.add_item(self.email_cliente)
-
-    async def on_submit(self, interaction: discord.Interaction):
-        import config
-        import utils.state_manager as state_manager
-        from utils.state_manager import generar_solicitud_id, cleanup_expired_states
-        import re
-        cleanup_expired_states()
-        try:
-            user_id = str(interaction.user.id)
-            pedido = self.pedido.value.strip()
-            id_wise = self.id_wise.value.strip()
-            canal_compra = self.canal_compra.value.strip()
-            email_cliente = self.email_cliente.value.strip()
-            
-            # Validar campos obligatorios
-            if not pedido or not id_wise or not canal_compra or not email_cliente:
-                await interaction.response.send_message('❌ Error: Todos los campos son obligatorios.', ephemeral=True)
-                return
-            
-            # Validar formato de email
-            email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
-            if not re.match(email_pattern, email_cliente):
-                await interaction.response.send_message('❌ Error: El formato del email no es válido.', ephemeral=True)
-                return
-            
-            # Validar canal de compra
-            canales_validos = [
-                'Store BGH', 'MELI', 'ICBC MALL', 'BNA', 'FRÁVEGA', 
-                'MEGATONE', 'PROVINCIA', 'CLIC', 'AFINIDAD', 'Carrefour'
-            ]
-            if canal_compra not in canales_validos:
-                await interaction.response.send_message(f'❌ Error: Canal de compra no válido. Opciones válidas: {", ".join(canales_validos)}', ephemeral=True)
-                return
-            
-            from utils.google_sheets import initialize_google_sheets, check_if_pedido_exists
-            from datetime import datetime
-            import pytz
-            
-            if not config.GOOGLE_CREDENTIALS_JSON:
-                await interaction.response.send_message('❌ Error: Las credenciales de Google no están configuradas.', ephemeral=True)
-                return
-            
-            if not config.SPREADSHEET_ID_FAC_A:
-                await interaction.response.send_message('❌ Error: El ID de la hoja de Facturas no está configurado.', ephemeral=True)
-                return
-            
-            client = initialize_google_sheets(config.GOOGLE_CREDENTIALS_JSON)
-            spreadsheet = client.open_by_key(config.SPREADSHEET_ID_FAC_A)
-            
-            # Obtener la hoja FacB
-            try:
-                sheet = spreadsheet.worksheet('FacB')
-            except:
-                await interaction.response.send_message('❌ Error: No se encontró la hoja "FacB" en el spreadsheet.', ephemeral=True)
-                return
-            
-            # Usar solo el rango de columnas, no el nombre de la hoja
-            sheet_range = "A:G"
-            rows = sheet.get(sheet_range)
-            header = rows[0] if rows else []
-            
-            # Verificar duplicado
-            is_duplicate = check_if_pedido_exists(sheet, sheet_range, pedido)
-            if is_duplicate:
-                await interaction.response.send_message(f'❌ El número de pedido **{pedido}** ya se encuentra registrado en la hoja de Factura B.', ephemeral=True)
-                return
-            
-            tz = pytz.timezone('America/Argentina/Buenos_Aires')
-            now = datetime.now(tz)
-            fecha_hora = now.strftime('%d/%m/%Y %H:%M:%S')
-            agente = interaction.user.display_name
-            
-            # Preparar la fila según el orden de columnas especificado
-            row_data = [
-                fecha_hora,        # Fecha de carga
-                agente,            # Asesor que carga
-                pedido,            # Número de pedido
-                id_wise,           # ID Caso Wise
-                canal_compra,      # Canal de compra
-                email_cliente,     # Correo electrónico
-                ''                 # Fecha de envío (vacío)
-            ]
-            
-            # Ajustar la cantidad de columnas al header
-            if len(row_data) < len(header):
-                row_data += [''] * (len(header) - len(row_data))
-            elif len(row_data) > len(header):
-                row_data = row_data[:len(header)]
-            
-            sheet.append_row(row_data)
-            
-            confirmation_message = f"""✅ **Factura B registrada exitosamente**\n\n📋 **Detalles:**\n• **N° de Pedido:** {pedido}\n• **ID Caso Wise:** {id_wise}\n• **Canal de Compra:** {canal_compra}\n• **Email Cliente:** {email_cliente}\n• **Agente:** {agente}\n• **Fecha:** {fecha_hora}\n\nLa factura ha sido guardada en Google Sheets."""
-            
-            await interaction.response.send_message(confirmation_message, ephemeral=True)
-            
-        except Exception as error:
-            print('Error general durante el procesamiento del modal de Factura B (on_submit):', error)
-            await interaction.response.send_message(f'❌ Hubo un error al procesar tu factura. Detalles: {error}', ephemeral=True)
-        
-
+        if not interaction.response.is_done():
+            await interaction.response.send_message('✅ Tarea finalizada.', ephemeral=True)
 
 class Modals(commands.Cog):
     def __init__(self, bot):

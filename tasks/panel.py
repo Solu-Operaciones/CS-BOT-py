@@ -840,7 +840,6 @@ class PanelComandosView(discord.ui.View):
     def __init__(self):
         super().__init__(timeout=None)
         self.add_item(FacturaAButton())
-        self.add_item(FacturaBButton())
         self.add_item(CambiosDevolucionesButton())
         self.add_item(SolicitudesEnviosButton())
         self.add_item(TrackingButton())
@@ -878,26 +877,6 @@ class IniciarFacturaAButton(discord.ui.Button):
             await interaction.response.send_modal(FacturaAModal())
         except Exception as e:
             print(f'Error en IniciarFacturaAButton: {e}')
-            await interaction.response.send_message('❌ Error al iniciar el flujo. Por favor, inténtalo de nuevo.', ephemeral=True)
-
-class IniciarFacturaBView(discord.ui.View):
-    def __init__(self, user_id):
-        super().__init__(timeout=300)
-        self.add_item(IniciarFacturaBButton(user_id))
-
-class IniciarFacturaBButton(discord.ui.Button):
-    def __init__(self, user_id):
-        super().__init__(label='Iniciar registro de Factura B', style=discord.ButtonStyle.primary, custom_id=f'init_factura_b_{user_id}')
-        self.user_id = user_id
-    async def callback(self, interaction: discord.Interaction):
-        try:
-            if str(interaction.user.id) != str(self.user_id):
-                await interaction.response.send_message('Solo el usuario mencionado puede iniciar este flujo.', ephemeral=True)
-                return
-            from interactions.modals import FacturaBModal
-            await interaction.response.send_modal(FacturaBModal())
-        except Exception as e:
-            print(f'Error en IniciarFacturaBButton: {e}')
             await interaction.response.send_message('❌ Error al iniciar el flujo. Por favor, inténtalo de nuevo.', ephemeral=True)
 
 class IniciarTrackingView(discord.ui.View):
@@ -971,39 +950,6 @@ class FacturaAButton(discord.ui.Button):
                 await interaction.response.send_message('No se configuró el canal de Factura A.', ephemeral=True)
         except Exception as e:
             print(f'Error en FacturaAButton: {e}')
-            if not interaction.response.is_done():
-                await interaction.response.send_message('❌ Error al procesar la solicitud. Por favor, inténtalo de nuevo.', ephemeral=True)
-
-class FacturaBButton(discord.ui.Button):
-    def __init__(self):
-        super().__init__(label='Factura B', emoji='📋', style=discord.ButtonStyle.primary, custom_id='panel_factura_b')
-    async def callback(self, interaction: discord.Interaction):
-        try:
-            from config import TARGET_CHANNEL_ID_FAC_A  # Usar el mismo canal que Factura A
-            canal_id = safe_int(TARGET_CHANNEL_ID_FAC_A)
-            if canal_id:
-                canal = interaction.guild.get_channel(canal_id)
-                if canal:
-                    await interaction.response.defer()
-                    msg_panel = await interaction.followup.send(f'✅ Revisa el canal <#{canal_id}> para continuar el flujo.')
-                    msg = await canal.send(f'📋 {interaction.user.mention}, haz clic en el botón para iniciar el registro de Factura B:', view=IniciarFacturaBView(interaction.user.id))
-                    await asyncio.sleep(20)
-                    try:
-                        await msg_panel.delete()
-                    except:
-                        pass
-                    await asyncio.sleep(100)
-                    try:
-                        await msg.delete()
-                    except:
-                        pass
-                    return
-                else:
-                    await interaction.response.send_message('No se encontró el canal de Factura B.', ephemeral=True)
-            else:
-                await interaction.response.send_message('No se configuró el canal de Factura B.', ephemeral=True)
-        except Exception as e:
-            print(f'Error en FacturaBButton: {e}')
             if not interaction.response.is_done():
                 await interaction.response.send_message('❌ Error al procesar la solicitud. Por favor, inténtalo de nuevo.', ephemeral=True)
 
@@ -1292,26 +1238,17 @@ class IniciarCancelacionesButton(discord.ui.Button):
                 return
             from utils.state_manager import set_user_state
             set_user_state(str(interaction.user.id), {"type": "cancelaciones", "paso": 1}, "cancelaciones")
-            from interactions.modals import CancelacionModal
-            await interaction.response.send_modal(CancelacionModal())
+            from interactions.select_menus import build_tipo_cancelacion_menu
+            view = build_tipo_cancelacion_menu()
+            await interaction.response.send_message('Por favor, selecciona el tipo de cancelación:', view=view, ephemeral=True)
         except Exception as e:
             print(f'Error en IniciarCancelacionesButton: {e}')
-            await interaction.response.send_message('❌ Error al abrir el formulario de cancelación. Por favor, inténtalo de nuevo.', ephemeral=True)
+            await interaction.response.send_message('❌ Error al iniciar el flujo. Por favor, inténtalo de nuevo.', ephemeral=True)
 
 class ReclamosMLButton(discord.ui.Button):
     def __init__(self):
         super().__init__(label='Reclamos ML', emoji='🛒', style=discord.ButtonStyle.primary, custom_id='panel_reclamos_ml')
     async def callback(self, interaction: discord.Interaction):
-        # Verificar rol "Bgh Back Office"
-        required_role_id = 1300888951619584101  # ID del rol "Bgh Back Office"
-        if interaction.guild:
-            member = interaction.guild.get_member(interaction.user.id)
-            if not member or not member.get_role(required_role_id):
-                await interaction.response.send_message(
-                    "❌ **Acceso denegado:** Solo los miembros del equipo Back Office pueden usar este comando.", 
-                    ephemeral=True)
-                return
-        
         try:
             from config import TARGET_CHANNEL_ID_CASOS_RECLAMOS_ML
             canal_id = safe_int(TARGET_CHANNEL_ID_CASOS_RECLAMOS_ML or '0')
@@ -1351,16 +1288,6 @@ class IniciarReclamosMLButton(discord.ui.Button):
         super().__init__(label='Iniciar registro de Reclamo ML', style=discord.ButtonStyle.primary, custom_id=f'init_reclamos_ml_{user_id}')
         self.user_id = user_id
     async def callback(self, interaction: discord.Interaction):
-        # Verificar rol "Bgh Back Office"
-        required_role_id = 1300888951619584101  # ID del rol "Bgh Back Office"
-        if interaction.guild:
-            member = interaction.guild.get_member(interaction.user.id)
-            if not member or not member.get_role(required_role_id):
-                await interaction.response.send_message(
-                    "❌ **Acceso denegado:** Solo los miembros del equipo Back Office pueden usar este comando.", 
-                    ephemeral=True)
-                return
-        
         try:
             if str(interaction.user.id) != str(self.user_id):
                 await interaction.response.send_message('Solo el usuario mencionado puede iniciar este flujo.', ephemeral=True)

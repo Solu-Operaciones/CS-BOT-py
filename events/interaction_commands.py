@@ -3,7 +3,7 @@ from discord import app_commands
 from discord.ext import commands
 import config
 from utils.andreani import get_andreani_tracking
-from interactions.modals import FacturaAModal, FacturaBModal, PiezaFaltanteModal
+from interactions.modals import FacturaAModal, PiezaFaltanteModal
 import re
 from datetime import datetime
 
@@ -53,28 +53,6 @@ class InteractionCommands(commands.Cog):
             print('Error al mostrar el modal de Factura A:', error)
             await interaction.response.send_message(
                 'Hubo un error al abrir el formulario de solicitud de Factura A. Por favor, inténtalo de nuevo.', ephemeral=True)
-
-    @maybe_guild_decorator()
-    @app_commands.command(name="factura-b", description="Solicita el registro de Factura B")
-    async def factura_b(self, interaction: discord.Interaction):
-        target_cat = get_target_category_id()
-        if target_cat and getattr(interaction.channel, 'category_id', None) != target_cat:
-            await interaction.response.send_message(
-                f"Este comando solo puede ser usado en la categoría <#{target_cat}>.", ephemeral=True)
-            return
-        # Restricción de canal (usar el mismo que Factura A)
-        if hasattr(config, 'TARGET_CHANNEL_ID_FAC_A') and str(interaction.channel_id) != str(config.TARGET_CHANNEL_ID_FAC_A):
-            await interaction.response.send_message(
-                f"Este comando solo puede ser usado en el canal <#{config.TARGET_CHANNEL_ID_FAC_A}>.", ephemeral=True)
-            return
-        try:
-            modal = FacturaBModal()
-            await interaction.response.send_modal(modal)
-            print('Modal de Factura B mostrado al usuario.')
-        except Exception as error:
-            print('Error al mostrar el modal de Factura B:', error)
-            await interaction.response.send_message(
-                'Hubo un error al abrir el formulario de solicitud de Factura B. Por favor, inténtalo de nuevo.', ephemeral=True)
 
     @maybe_guild_decorator()
     @app_commands.command(name="tracking", description="Consulta el estado de un envío de Andreani")
@@ -296,15 +274,19 @@ class InteractionCommands(commands.Cog):
             await interaction.response.send_message(
                 f"Este comando solo puede ser usado en el canal <#{getattr(config, 'TARGET_CHANNEL_ID_CASOS_CANCELACION', '')}>.", ephemeral=True)
             return
-        from interactions.modals import CancelacionModal
+        from interactions.select_menus import build_tipo_cancelacion_menu
         from utils.state_manager import set_user_state, delete_user_state
         try:
+            view = build_tipo_cancelacion_menu()
             set_user_state(str(interaction.user.id), {"type": "cancelaciones", "paso": 1}, "cancelaciones")
-            modal = CancelacionModal()
-            await interaction.response.send_modal(modal)
-            print(f"Usuario {interaction.user} puesto en estado pendiente (cancelaciones, paso 1). Modal mostrado.")
+            await interaction.response.send_message(
+                content='Por favor, selecciona el tipo de cancelación:',
+                view=view,
+                ephemeral=True
+            )
+            print(f"Usuario {interaction.user} puesto en estado pendiente (cancelaciones, paso 1). Select Menu mostrado.")
         except Exception as error:
-            print('Error al mostrar el Modal de Cancelación:', error)
+            print('Error al mostrar el Select Menu de Tipo de Cancelación:', error)
             await interaction.response.send_message(
                 'Hubo un error al iniciar el formulario de registro de Cancelaciones. Por favor, inténtalo de nuevo.', ephemeral=True)
             delete_user_state(str(interaction.user.id), "cancelaciones")
@@ -312,16 +294,6 @@ class InteractionCommands(commands.Cog):
     @maybe_guild_decorator()
     @app_commands.command(name="reclamos-ml", description="Inicia el registro de un reclamo de Mercado Libre")
     async def reclamos_ml(self, interaction: discord.Interaction):
-        # Verificar rol "Bgh Back Office"
-        required_role_id = 1300888951619584101  # ID del rol "Bgh Back Office"
-        if interaction.guild:
-            member = interaction.guild.get_member(interaction.user.id)
-            if not member or not member.get_role(required_role_id):
-                await interaction.response.send_message(
-                    "❌ **Acceso denegado:** Solo los miembros del equipo Back Office pueden usar este comando.", 
-                    ephemeral=True)
-                return
-        
         target_cat = get_target_category_id()
         if target_cat and getattr(interaction.channel, 'category_id', None) != target_cat:
             await interaction.response.send_message(

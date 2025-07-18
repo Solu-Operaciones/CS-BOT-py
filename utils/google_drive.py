@@ -1,13 +1,13 @@
 from google.oauth2.service_account import Credentials
 from googleapiclient.discovery import build
-from googleapiclient.http import MediaIoBaseUpload, MediaFileUpload, MediaIoBaseDownload
+from googleapiclient.http import MediaIoBaseUpload
 import requests
 import io
 import json
 
 def initialize_google_drive(credentials_json: str):
     try:
-        scopes =  ['https://www.googleapis.com/auth/drive', 'https://www.googleapis.com/auth/drive.file','https://www.googleapis.com/auth/drive.appdata','https://www.googleapis.com/auth/drive.photos.readonly']
+        scopes = ['https://www.googleapis.com/auth/drive']
         
         # Validar que credentials_json sea un JSON válido
         try:
@@ -18,61 +18,12 @@ def initialize_google_drive(credentials_json: str):
         except json.JSONDecodeError as e:
             raise ValueError(f"Error al parsear credenciales JSON: {e}")
         
-        # Verificar campos requeridos en las credenciales
-        required_fields = ['type', 'project_id', 'private_key_id', 'private_key', 'client_email', 'client_id']
-        missing_fields = [field for field in required_fields if field not in creds_dict]
-        if missing_fields:
-            raise ValueError(f"Credenciales incompletas. Faltan campos: {missing_fields}")
-        
-        print(f"🔍 DEBUG - Inicializando Google Drive con cuenta: {creds_dict.get('client_email', 'N/A')}")
-        print(f"🔍 DEBUG - Project ID: {creds_dict.get('project_id', 'N/A')}")
-        
         credentials = Credentials.from_service_account_info(creds_dict, scopes=scopes)
-        
-        # Verificar que las credenciales son válidas haciendo una prueba
         drive_service = build('drive', 'v3', credentials=credentials)
-        
-        # Hacer una llamada de prueba para verificar autenticación con reintentos
-        max_retries = 3
-        retry_delay = 2  # segundos
-        
-        for attempt in range(max_retries):
-            try:
-                test_response = drive_service.files().list(pageSize=1, fields='files(id)').execute()
-                print("✅ Autenticación con Google Drive exitosa")
-                break
-            except Exception as auth_error:
-                error_msg = str(auth_error)
-                
-                # Si es error 500 (Google), reintentar
-                if '500' in error_msg or 'internal error' in error_msg.lower():
-                    if attempt < max_retries - 1:
-                        print(f"⚠️ Error 500 de Google Drive (intento {attempt + 1}/{max_retries}). Reintentando en {retry_delay} segundos...")
-                        time.sleep(retry_delay)
-                        retry_delay *= 2  # Backoff exponencial
-                        continue
-                    else:
-                        print(f"❌ Error 500 persistente después de {max_retries} intentos")
-                        raise ValueError(f"Error temporal de Google Drive (500): {error_msg}. Intenta más tarde.")
-                
-                # Si es error de credenciales, no reintentar
-                elif 'invalid_grant' in error_msg.lower() or 'jwt' in error_msg.lower():
-                    raise ValueError(f"Error de autenticación JWT: {error_msg}. Verifica que las credenciales sean correctas y la cuenta de servicio tenga permisos.")
-                
-                # Otros errores
-                else:
-                    raise ValueError(f"Error de autenticación con Google Drive: {error_msg}")
-        
-        print("Instancia de Google Drive inicializada correctamente.")
+        print("Instancia de Google Drive inicializada.")
         return drive_service
     except Exception as error:
-        print(f"❌ Error al inicializar Google Drive: {error}")
-        if 'invalid_grant' in str(error).lower():
-            print("💡 SUGERENCIA: Verifica que:")
-            print("   1. Las credenciales JSON sean correctas")
-            print("   2. La cuenta de servicio tenga permisos en Google Drive")
-            print("   3. La cuenta de servicio no esté deshabilitada")
-            print("   4. El archivo de credenciales no esté corrupto")
+        print("Error al inicializar Google Drive:", error)
         raise
 
 def find_or_create_drive_folder(drive_service, parent_id: str, folder_name: str) -> str:
@@ -247,7 +198,7 @@ def upload_file_to_drive(drive_service, folder_id: str, attachment) -> dict:
         print(f"🔍 DEBUG - Metadata para subir archivo: {file_metadata}")
         print(f"🔍 DEBUG - Folder ID donde se subirá: '{folder_id}'")
         
-        media = MediaFileUpload(attachment.url, resumable=True)        
+        media = MediaIoBaseUpload(io.BytesIO(file_response.content), mimetype=file_response.headers.get('content-type', 'application/octet-stream'))
         print(f"🔍 DEBUG - Subiendo archivo {attachment.filename} a Drive en la carpeta {folder_id}...")
         uploaded_file = drive_service.files().create(body=file_metadata, media_body=media, fields='id, name').execute()
         print(f"Archivo '{uploaded_file['name']}' subido con éxito. ID de Drive: {uploaded_file['id']}")
