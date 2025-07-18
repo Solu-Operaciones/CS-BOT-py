@@ -171,21 +171,63 @@ class AttachmentHandler(commands.Cog):
                 
                 # Buscar o crear carpeta del pedido
                 parent_folder_id = getattr(config, 'PARENT_DRIVE_FOLDER_ID', None)
+                print(f"🔍 DEBUG - PARENT_DRIVE_FOLDER_ID desde config: '{parent_folder_id}'")
+                
                 if not parent_folder_id:
-                    print("Advertencia: PARENT_DRIVE_FOLDER_ID no está configurado, creando carpeta en raíz")
+                    print("❌ Advertencia: PARENT_DRIVE_FOLDER_ID no está configurado, creando carpeta en raíz")
+                else:
+                    print(f"✅ PARENT_DRIVE_FOLDER_ID configurado: '{parent_folder_id}'")
+                
+                # Opción 1: Crear carpeta específica para el pedido
                 folder_name = f'FacturaA_{pedido}'
-                print(f"DEBUG: Creando carpeta con nombre: {folder_name}")
+                print(f"🔍 DEBUG - Nombre de carpeta a crear: '{folder_name}'")
+                print(f"🔍 DEBUG - Llamando find_or_create_drive_folder con parent_id: '{parent_folder_id}'")
+                
                 folder_id = find_or_create_drive_folder(drive_service, parent_folder_id or "", folder_name)
+                print(f"🔍 DEBUG - ID de carpeta retornado: '{folder_id}'")
+                
+                # Opción 2: Usar directamente la carpeta "Adjuntos solicitudes" (comentado por ahora)
+                # folder_id = parent_folder_id
+                # print(f"🔍 DEBUG - Usando carpeta padre directamente: '{folder_id}'")
                 
                 # Subir cada adjunto
                 uploaded_files = []
+                debug_message = ""
+                
                 for attachment in message.attachments:
-                    uploaded = upload_file_to_drive(drive_service, folder_id, attachment)
-                    uploaded_files.append(uploaded)
+                    try:
+                        uploaded = upload_file_to_drive(drive_service, folder_id, attachment)
+                        uploaded_files.append(uploaded)
+                        
+                        # Mostrar información de debug si está disponible
+                        if hasattr(upload_file_to_drive, 'debug_info') and upload_file_to_drive.debug_info:
+                            debug_message = f"{upload_file_to_drive.debug_info}\n\n"
+                            upload_file_to_drive.debug_info = ""  # Limpiar después de mostrar
+                        
+                        # Delay adicional entre archivos para mayor seguridad
+                        import asyncio
+                        await asyncio.sleep(0.5)
+                            
+                    except Exception as upload_error:
+                        # Mostrar error detallado en Discord
+                        error_details = f"❌ **Error al subir {attachment.filename}:**\n{str(upload_error)}"
+                        
+                        # Agregar debug info si está disponible
+                        if hasattr(upload_file_to_drive, 'debug_info') and upload_file_to_drive.debug_info:
+                            error_details = f"{upload_file_to_drive.debug_info}\n\n{error_details}"
+                            upload_file_to_drive.debug_info = ""
+                        
+                        await message.reply(error_details)
+                        return
                 
                 # Confirmar al usuario
                 file_names = ', '.join([f["name"] for f in uploaded_files])
-                await message.reply(f'✅ Archivos subidos a Google Drive para el pedido {pedido}: {file_names}')
+                success_message = f'✅ **Archivos subidos exitosamente**\n\n📁 **Pedido:** {pedido}\n📎 **Archivos:** {file_names}'
+                
+                if debug_message:
+                    await message.reply(f"{debug_message}{success_message}")
+                else:
+                    await message.reply(success_message)
                 
                 # Buscar información del caso en Google Sheets para crear el embed
                 if not config.GOOGLE_CREDENTIALS_JSON or not config.SPREADSHEET_ID_FAC_A:
@@ -291,7 +333,7 @@ class AttachmentHandler(commands.Cog):
                 view = SolicitudCargadaView(pedido, caso_info, message.author.display_name, fecha_carga, str(message.id))
                 
                 # Enviar el embed mencionando a Bgh Back Office
-                Bgh_Back_Office_id = 1388209760314331297 
+                Bgh_Back_Office_id = 1300888951619584101 
                 await message.channel.send(
                     content=f'<@&{Bgh_Back_Office_id}> Nueva solicitud de Factura A cargada',
                     embed=embed,
