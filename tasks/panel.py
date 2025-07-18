@@ -1249,6 +1249,16 @@ class ReclamosMLButton(discord.ui.Button):
     def __init__(self):
         super().__init__(label='Reclamos ML', emoji='🛒', style=discord.ButtonStyle.primary, custom_id='panel_reclamos_ml')
     async def callback(self, interaction: discord.Interaction):
+        # Verificar rol "Bgh Back Office"
+        required_role_id = 1300888951619584101  # ID del rol "Bgh Back Office"
+        if interaction.guild:
+            member = interaction.guild.get_member(interaction.user.id)
+            if not member or not member.get_role(required_role_id):
+                await interaction.response.send_message(
+                    "❌ **Acceso denegado:** Solo los miembros del equipo Back Office pueden usar este comando.", 
+                    ephemeral=True)
+                return
+        
         try:
             from config import TARGET_CHANNEL_ID_CASOS_RECLAMOS_ML
             canal_id = safe_int(TARGET_CHANNEL_ID_CASOS_RECLAMOS_ML or '0')
@@ -1288,6 +1298,16 @@ class IniciarReclamosMLButton(discord.ui.Button):
         super().__init__(label='Iniciar registro de Reclamo ML', style=discord.ButtonStyle.primary, custom_id=f'init_reclamos_ml_{user_id}')
         self.user_id = user_id
     async def callback(self, interaction: discord.Interaction):
+        # Verificar rol "Bgh Back Office"
+        required_role_id = 1300888951619584101  # ID del rol "Bgh Back Office"
+        if interaction.guild:
+            member = interaction.guild.get_member(interaction.user.id)
+            if not member or not member.get_role(required_role_id):
+                await interaction.response.send_message(
+                    "❌ **Acceso denegado:** Solo los miembros del equipo Back Office pueden usar este comando.", 
+                    ephemeral=True)
+                return
+        
         try:
             if str(interaction.user.id) != str(self.user_id):
                 await interaction.response.send_message('Solo el usuario mencionado puede iniciar este flujo.', ephemeral=True)

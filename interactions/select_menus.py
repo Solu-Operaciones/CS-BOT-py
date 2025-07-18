@@ -120,6 +120,16 @@ class TipoReclamosMLSelect(discord.ui.Select):
         super().__init__(placeholder='Selecciona el tipo de reclamo...', min_values=1, max_values=1, options=options, custom_id='reclamosMLTipoSelect')
 
     async def callback(self, interaction: discord.Interaction):
+        # Verificar rol "Bgh Back Office"
+        required_role_id = 1300888951619584101  # ID del rol "Bgh Back Office"
+        if interaction.guild:
+            member = interaction.guild.get_member(interaction.user.id)
+            if not member or not member.get_role(required_role_id):
+                await interaction.response.send_message(
+                    "❌ **Acceso denegado:** Solo los miembros del equipo Back Office pueden usar este comando.", 
+                    ephemeral=True)
+                return
+        
         from utils.state_manager import set_user_state
         user_id = str(interaction.user.id)
         selected_tipo = self.values[0]

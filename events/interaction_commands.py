@@ -294,6 +294,16 @@ class InteractionCommands(commands.Cog):
     @maybe_guild_decorator()
     @app_commands.command(name="reclamos-ml", description="Inicia el registro de un reclamo de Mercado Libre")
     async def reclamos_ml(self, interaction: discord.Interaction):
+        # Verificar rol "Bgh Back Office"
+        required_role_id = 1300888951619584101  # ID del rol "Bgh Back Office"
+        if interaction.guild:
+            member = interaction.guild.get_member(interaction.user.id)
+            if not member or not member.get_role(required_role_id):
+                await interaction.response.send_message(
+                    "❌ **Acceso denegado:** Solo los miembros del equipo Back Office pueden usar este comando.", 
+                    ephemeral=True)
+                return
+        
         target_cat = get_target_category_id()
         if target_cat and getattr(interaction.channel, 'category_id', None) != target_cat:
             await interaction.response.send_message(
