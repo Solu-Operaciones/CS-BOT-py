@@ -800,6 +800,7 @@ class SolicitudEnviosModal(discord.ui.Modal, title='Detalles de la Solicitud de 
                 state_manager.delete_user_state(user_id, "solicitudes_envios")
                 return
             from utils.google_sheets import initialize_google_sheets, check_if_pedido_exists
+            from utils.google_client_manager import get_sheets_client
             from datetime import datetime
             import pytz
             if not config.GOOGLE_CREDENTIALS_JSON:
@@ -976,6 +977,7 @@ class ReembolsoModal(discord.ui.Modal, title='Detalles del Reembolso'):
                 return
             
             from utils.google_sheets import initialize_google_sheets, check_if_pedido_exists
+            from utils.google_client_manager import get_sheets_client
             from datetime import datetime
             import pytz
             if not config.GOOGLE_CREDENTIALS_JSON:
