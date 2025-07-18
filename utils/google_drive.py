@@ -1,13 +1,13 @@
 from google.oauth2.service_account import Credentials
 from googleapiclient.discovery import build
-from googleapiclient.http import MediaIoBaseUpload
+from googleapiclient.http import MediaIoBaseUpload, MediaFileUpload, MediaIoBaseDownload
 import requests
 import io
 import json
 
 def initialize_google_drive(credentials_json: str):
     try:
-        scopes = ['https://www.googleapis.com/auth/drive']
+        scopes =  ['https://www.googleapis.com/auth/drive', 'https://www.googleapis.com/auth/drive.file','https://www.googleapis.com/auth/drive.appdata','https://www.googleapis.com/auth/drive.photos.readonly']
         
         # Validar que credentials_json sea un JSON válido
         try:
@@ -198,8 +198,7 @@ def upload_file_to_drive(drive_service, folder_id: str, attachment) -> dict:
         print(f"🔍 DEBUG - Metadata para subir archivo: {file_metadata}")
         print(f"🔍 DEBUG - Folder ID donde se subirá: '{folder_id}'")
         
-        media = MediaIoBaseUpload(io.BytesIO(file_response.content), mimetype=file_response.headers.get('content-type', 'application/octet-stream'))
-        print(f"🔍 DEBUG - Subiendo archivo {attachment.filename} a Drive en la carpeta {folder_id}...")
+        media = MediaFileUpload(path_listing, resumable=True)        print(f"🔍 DEBUG - Subiendo archivo {attachment.filename} a Drive en la carpeta {folder_id}...")
         uploaded_file = drive_service.files().create(body=file_metadata, media_body=media, fields='id, name').execute()
         print(f"Archivo '{uploaded_file['name']}' subido con éxito. ID de Drive: {uploaded_file['id']}")
         return uploaded_file
