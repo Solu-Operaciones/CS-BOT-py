@@ -1238,12 +1238,11 @@ class IniciarCancelacionesButton(discord.ui.Button):
                 return
             from utils.state_manager import set_user_state
             set_user_state(str(interaction.user.id), {"type": "cancelaciones", "paso": 1}, "cancelaciones")
-            from interactions.select_menus import build_tipo_cancelacion_menu
-            view = build_tipo_cancelacion_menu()
-            await interaction.response.send_message('Por favor, selecciona el tipo de cancelación:', view=view, ephemeral=True)
+            from interactions.modals import CancelacionModal
+            await interaction.response.send_modal(CancelacionModal())
         except Exception as e:
             print(f'Error en IniciarCancelacionesButton: {e}')
-            await interaction.response.send_message('❌ Error al iniciar el flujo. Por favor, inténtalo de nuevo.', ephemeral=True)
+            await interaction.response.send_message('❌ Error al abrir el formulario de cancelación. Por favor, inténtalo de nuevo.', ephemeral=True)
 
 class ReclamosMLButton(discord.ui.Button):
     def __init__(self):

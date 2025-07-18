@@ -890,6 +890,14 @@ class CancelacionModal(discord.ui.Modal, title='Registrar Cancelación'):
             required=True,
             max_length=100
         )
+        self.motivo_cancelacion = discord.ui.TextInput(
+            label="Motivo de Cancelación",
+            placeholder="Ingresa el motivo de la cancelación...",
+            custom_id="cancelacionMotivoInput",
+            style=discord.TextStyle.paragraph,
+            required=True,
+            max_length=500
+        )
         self.observaciones = discord.ui.TextInput(
             label="Observaciones",
             placeholder="Observaciones (opcional)",
@@ -899,6 +907,7 @@ class CancelacionModal(discord.ui.Modal, title='Registrar Cancelación'):
             max_length=1000
         )
         self.add_item(self.pedido)
+        self.add_item(self.motivo_cancelacion)
         self.add_item(self.observaciones)
 
     async def on_submit(self, interaction: discord.Interaction):
@@ -909,8 +918,8 @@ class CancelacionModal(discord.ui.Modal, title='Registrar Cancelación'):
         try:
             user_id = str(interaction.user.id)
             pending_data = state_manager.get_user_state(user_id, "cancelaciones")
-            tipo_cancelacion = pending_data.get('tipoCancelacion', 'CANCELAR') if pending_data else 'CANCELAR'
             pedido = self.pedido.value.strip()
+            motivo_cancelacion = self.motivo_cancelacion.value.strip()
             observaciones = self.observaciones.value.strip()
             agente = interaction.user.display_name
             tz = pytz.timezone('America/Argentina/Buenos_Aires')
@@ -950,6 +959,7 @@ class CancelacionModal(discord.ui.Modal, title='Registrar Cancelación'):
             idx_solicitud = next((i for i, col in enumerate(header) if normaliza_columna(col) == normaliza_columna('SOLICITUD')), None)
             idx_frenado = next((i for i, col in enumerate(header) if normaliza_columna(col) == normaliza_columna('FRENADO')), None)
             idx_reembolso = next((i for i, col in enumerate(header) if normaliza_columna(col) == normaliza_columna('REEMBOLSO')), None)
+            idx_motivo = next((i for i, col in enumerate(header) if normaliza_columna(col) == normaliza_columna('MOTIVO DE CANCELACIÓN')), None)
             idx_agente_back = next((i for i, col in enumerate(header) if normaliza_columna(col) == normaliza_columna('AGENTE BACK')), None)
             idx_observaciones = next((i for i, col in enumerate(header) if normaliza_columna(col) == normaliza_columna('OBSERVACIONES')), None)
             # Preparar la fila
@@ -961,7 +971,9 @@ class CancelacionModal(discord.ui.Modal, title='Registrar Cancelación'):
             if idx_fecha is not None:
                 row_data[idx_fecha] = fecha_hora
             if idx_solicitud is not None:
-                row_data[idx_solicitud] = tipo_cancelacion
+                row_data[idx_solicitud] = 'CANCELAR'  # Siempre CANCELAR
+            if idx_motivo is not None:
+                row_data[idx_motivo] = motivo_cancelacion
             if idx_frenado is not None:
                 row_data[idx_frenado] = 'Pendiente'
             if idx_reembolso is not None:
@@ -971,7 +983,7 @@ class CancelacionModal(discord.ui.Modal, title='Registrar Cancelación'):
             if idx_observaciones is not None:
                 row_data[idx_observaciones] = observaciones
             sheet.append_row(row_data)
-            confirmation_message = f"✅ **Cancelación registrada exitosamente**\n\n📋 **Detalles:**\n• **N° de Pedido:** {pedido}\n• **Tipo:** {tipo_cancelacion}\n• **Agente:** {agente}\n• **Fecha:** {fecha_hora}\n\nLa cancelación ha sido guardada en Google Sheets."
+            confirmation_message = f"✅ **Cancelación registrada exitosamente**\n\n📋 **Detalles:**\n• **N° de Pedido:** {pedido}\n• **Motivo:** {motivo_cancelacion}\n• **Agente:** {agente}\n• **Fecha:** {fecha_hora}\n\nLa cancelación ha sido guardada en Google Sheets."
             await interaction.response.send_message(confirmation_message, ephemeral=True)
             state_manager.delete_user_state(user_id, "cancelaciones")
         except Exception as error:
