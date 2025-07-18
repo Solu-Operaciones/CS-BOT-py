@@ -20,18 +20,26 @@ class SolicitudCargadaButton(discord.ui.Button):
         self.message_id = message_id
 
     async def callback(self, interaction: discord.Interaction):
-        # Verificar si el usuario tiene el rol "Bgh Back Office" o es Ezequiel Arraygada
+        # Verificar si el usuario tiene el rol configurado o es Ezequiel Arraygada
         has_role = False
         user_name = interaction.user.display_name
         
-        # Verificar rol "Bgh Back Office" - solo funciona en contexto de guild
+        # Verificar rol configurado - solo funciona en contexto de guild
         if interaction.guild:
             member = interaction.guild.get_member(interaction.user.id)
             if member:
-                for role in member.roles:
-                    if role.name == "Bgh Back Office":
-                        has_role = True
-                        break
+                bo_role_id = getattr(config, 'SETUP_BO_ROL', None)
+                if bo_role_id:
+                    for role in member.roles:
+                        if str(role.id) == str(bo_role_id):
+                            has_role = True
+                            break
+                else:
+                    # Fallback: verificar por nombre si no hay ID configurado
+                    for role in member.roles:
+                        if role.name == "Bgh Back Office":
+                            has_role = True
+                            break
         
         # Verificar si es Ezequiel Arraygada
         if user_name == "Ezequiel Arraygada":
@@ -324,13 +332,20 @@ class AttachmentHandler(commands.Cog):
                 # Crear la vista con el botón
                 view = SolicitudCargadaView(pedido, caso_info, message.author.display_name, fecha_carga, str(message.id))
                 
-                # Enviar el embed mencionando a Bgh Back Office
-                Bgh_Back_Office_id = 1388209760314331297 
-                await message.channel.send(
-                    content=f'<@&{Bgh_Back_Office_id}> Nueva solicitud de Factura A cargada',
-                    embed=embed,
-                    view=view
-                )
+                # Enviar el embed mencionando al rol configurado
+                bo_role_id = getattr(config, 'SETUP_BO_ROL', None)
+                if bo_role_id:
+                    await message.channel.send(
+                        content=f'<@&{bo_role_id}> Nueva solicitud de Factura A cargada',
+                        embed=embed,
+                        view=view
+                    )
+                else:
+                    await message.channel.send(
+                        content='Nueva solicitud de Factura A cargada',
+                        embed=embed,
+                        view=view
+                    )
                 
             except Exception as error:
                 print(f'Error al subir adjuntos a Google Drive para Factura A: {error}')
