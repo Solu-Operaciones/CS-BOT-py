@@ -155,10 +155,11 @@ class AttachmentHandler(commands.Cog):
         user_id = str(message.author.id)
         cleanup_expired_states()
         pending_data = get_user_state(user_id, "facturaA")
-        delete_user_state(user_id, "facturaA")
         
         # Solo manejar si el usuario está esperando adjuntos para Factura A
         if pending_data and pending_data.get('type') == 'facturaA' and message.attachments:
+            # Eliminar el estado SOLO si vamos a procesar el mensaje
+            delete_user_state(user_id, "facturaA")
             pedido = pending_data.get('pedido')
             solicitud_id = pending_data.get('solicitud_id')
             if not pedido:
