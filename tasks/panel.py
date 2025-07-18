@@ -74,6 +74,33 @@ def check_setup_permissions(interaction: discord.Interaction) -> bool:
     
     return False
 
+def check_back_office_permissions(interaction: discord.Interaction) -> bool:
+    """
+    Verifica si el usuario tiene permisos de Back Office.
+    Permite a usuarios con el rol SETUP_BO_ROL, administradores y usuarios en SETUP_USER_IDS.
+    """
+    # Verificar que el usuario sea un Member
+    if not isinstance(interaction.user, discord.Member):
+        return False
+    
+    # Administradores siempre pueden usar estos comandos
+    if interaction.user.guild_permissions.administrator:
+        return True
+    
+    # Verificar si el usuario está en la lista de IDs permitidos
+    setup_user_ids = getattr(config, 'SETUP_USER_IDS', [])
+    if setup_user_ids and str(interaction.user.id) in setup_user_ids:
+        return True
+    
+    # Verificar si el usuario tiene el rol de Back Office
+    bo_role_id = getattr(config, 'SETUP_BO_ROL', None)
+    if bo_role_id:
+        for role in interaction.user.roles:
+            if str(role.id) == str(bo_role_id):
+                return True
+    
+    return False
+
 class TaskPanel(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
@@ -1249,6 +1276,11 @@ class ReclamosMLButton(discord.ui.Button):
     def __init__(self):
         super().__init__(label='Reclamos ML', emoji='🛒', style=discord.ButtonStyle.primary, custom_id='panel_reclamos_ml')
     async def callback(self, interaction: discord.Interaction):
+        # Verificar permisos de Back Office
+        if not check_back_office_permissions(interaction):
+            await interaction.response.send_message('❌ No tienes permisos para usar este comando. Se requieren permisos de Back Office, administrador o estar autorizado.', ephemeral=True)
+            return
+        
         try:
             from config import TARGET_CHANNEL_ID_CASOS_RECLAMOS_ML
             canal_id = safe_int(TARGET_CHANNEL_ID_CASOS_RECLAMOS_ML or '0')

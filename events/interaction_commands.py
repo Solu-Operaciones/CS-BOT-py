@@ -28,6 +28,33 @@ def maybe_guild_decorator():
         pass
     return lambda x: x
 
+def check_back_office_permissions(interaction: discord.Interaction) -> bool:
+    """
+    Verifica si el usuario tiene permisos de Back Office.
+    Permite a usuarios con el rol SETUP_BO_ROL, administradores y usuarios en SETUP_USER_IDS.
+    """
+    # Verificar que el usuario sea un Member
+    if not isinstance(interaction.user, discord.Member):
+        return False
+    
+    # Administradores siempre pueden usar estos comandos
+    if interaction.user.guild_permissions.administrator:
+        return True
+    
+    # Verificar si el usuario está en la lista de IDs permitidos
+    setup_user_ids = getattr(config, 'SETUP_USER_IDS', [])
+    if setup_user_ids and str(interaction.user.id) in setup_user_ids:
+        return True
+    
+    # Verificar si el usuario tiene el rol de Back Office
+    bo_role_id = getattr(config, 'SETUP_BO_ROL', None)
+    if bo_role_id:
+        for role in interaction.user.roles:
+            if str(role.id) == str(bo_role_id):
+                return True
+    
+    return False
+
 class InteractionCommands(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
@@ -294,6 +321,11 @@ class InteractionCommands(commands.Cog):
     @maybe_guild_decorator()
     @app_commands.command(name="reclamos-ml", description="Inicia el registro de un reclamo de Mercado Libre")
     async def reclamos_ml(self, interaction: discord.Interaction):
+        # Verificar permisos de Back Office
+        if not check_back_office_permissions(interaction):
+            await interaction.response.send_message('❌ No tienes permisos para usar este comando. Se requieren permisos de Back Office, administrador o estar autorizado.', ephemeral=True)
+            return
+        
         target_cat = get_target_category_id()
         if target_cat and getattr(interaction.channel, 'category_id', None) != target_cat:
             await interaction.response.send_message(
