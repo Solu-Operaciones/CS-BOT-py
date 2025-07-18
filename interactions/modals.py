@@ -86,7 +86,18 @@ class FacturaAModal(discord.ui.Modal, title='Registrar Solicitud Factura A'):
             else:
                 sheet = spreadsheet.sheet1
             rows = sheet.get(sheet_range_puro)
-            is_duplicate = check_if_pedido_exists(sheet, sheet_range_puro, pedido)
+            
+            # Si la hoja está vacía, crear el header
+            if not rows or len(rows) == 0:
+                print(f"🔍 DEBUG - Hoja {hoja_nombre or 'Sheet1'} está vacía. Creando header...")
+                header = ['Número de Pedido', 'Fecha/Hora', 'Caso', 'Email', 'Observaciones']
+                sheet.append_row(header)
+                rows = [header]
+                print(f"✅ Header creado en hoja {hoja_nombre or 'Sheet1'}")
+                # Si acabamos de crear el header, no puede haber duplicados
+                is_duplicate = False
+            else:
+                is_duplicate = check_if_pedido_exists(sheet, sheet_range_puro, pedido)
             if is_duplicate:
                 await interaction.response.send_message(f'❌ El número de pedido **{pedido}** ya se encuentra registrado en la hoja de Factura A.', ephemeral=True)
                 return
