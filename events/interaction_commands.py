@@ -3,7 +3,7 @@ from discord import app_commands
 from discord.ext import commands
 import config
 from utils.andreani import get_andreani_tracking
-from interactions.modals import FacturaAModal, PiezaFaltanteModal
+from interactions.modals import FacturaAModal, FacturaBModal, PiezaFaltanteModal
 import re
 from datetime import datetime
 
@@ -53,6 +53,28 @@ class InteractionCommands(commands.Cog):
             print('Error al mostrar el modal de Factura A:', error)
             await interaction.response.send_message(
                 'Hubo un error al abrir el formulario de solicitud de Factura A. Por favor, inténtalo de nuevo.', ephemeral=True)
+
+    @maybe_guild_decorator()
+    @app_commands.command(name="factura-b", description="Solicita el registro de Factura B")
+    async def factura_b(self, interaction: discord.Interaction):
+        target_cat = get_target_category_id()
+        if target_cat and getattr(interaction.channel, 'category_id', None) != target_cat:
+            await interaction.response.send_message(
+                f"Este comando solo puede ser usado en la categoría <#{target_cat}>.", ephemeral=True)
+            return
+        # Restricción de canal (usar el mismo que Factura A)
+        if hasattr(config, 'TARGET_CHANNEL_ID_FAC_A') and str(interaction.channel_id) != str(config.TARGET_CHANNEL_ID_FAC_A):
+            await interaction.response.send_message(
+                f"Este comando solo puede ser usado en el canal <#{config.TARGET_CHANNEL_ID_FAC_A}>.", ephemeral=True)
+            return
+        try:
+            modal = FacturaBModal()
+            await interaction.response.send_modal(modal)
+            print('Modal de Factura B mostrado al usuario.')
+        except Exception as error:
+            print('Error al mostrar el modal de Factura B:', error)
+            await interaction.response.send_message(
+                'Hubo un error al abrir el formulario de solicitud de Factura B. Por favor, inténtalo de nuevo.', ephemeral=True)
 
     @maybe_guild_decorator()
     @app_commands.command(name="tracking", description="Consulta el estado de un envío de Andreani")

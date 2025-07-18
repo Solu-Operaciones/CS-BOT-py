@@ -1247,6 +1247,146 @@ class PiezaFaltanteModal(discord.ui.Modal, title='Registrar Pieza Faltante'):
         if not interaction.response.is_done():
             await interaction.response.send_message('✅ Tarea finalizada.', ephemeral=True)
 
+class FacturaBModal(discord.ui.Modal, title='Registrar Factura B'):
+    def __init__(self):
+        super().__init__(custom_id='facturaBModal')
+        self.pedido = discord.ui.TextInput(
+            label="Número de Pedido",
+            placeholder="Ingresa el número de pedido...",
+            custom_id="facturaBPedidoInput",
+            style=discord.TextStyle.short,
+            required=True,
+            max_length=100
+        )
+        self.id_wise = discord.ui.TextInput(
+            label="ID Caso Wise",
+            placeholder="Ingresa el ID del caso Wise...",
+            custom_id="facturaBIdWiseInput",
+            style=discord.TextStyle.short,
+            required=True,
+            max_length=100
+        )
+        self.canal_compra = discord.ui.TextInput(
+            label="Canal de Compra",
+            placeholder="Store BGH, MELI, ICBC MALL, BNA, FRÁVEGA, MEGATONE, PROVINCIA, CLIC, AFINIDAD, Carrefour",
+            custom_id="facturaBCanalCompraInput",
+            style=discord.TextStyle.short,
+            required=True,
+            max_length=50
+        )
+        self.email_cliente = discord.ui.TextInput(
+            label="Email Cliente",
+            placeholder="ejemplo@email.com",
+            custom_id="facturaBEmailClienteInput",
+            style=discord.TextStyle.short,
+            required=True,
+            max_length=500
+        )
+        self.add_item(self.pedido)
+        self.add_item(self.id_wise)
+        self.add_item(self.canal_compra)
+        self.add_item(self.email_cliente)
+
+    async def on_submit(self, interaction: discord.Interaction):
+        import config
+        import utils.state_manager as state_manager
+        from utils.state_manager import generar_solicitud_id, cleanup_expired_states
+        import re
+        cleanup_expired_states()
+        try:
+            user_id = str(interaction.user.id)
+            pedido = self.pedido.value.strip()
+            id_wise = self.id_wise.value.strip()
+            canal_compra = self.canal_compra.value.strip()
+            email_cliente = self.email_cliente.value.strip()
+            
+            # Validar campos obligatorios
+            if not pedido or not id_wise or not canal_compra or not email_cliente:
+                await interaction.response.send_message('❌ Error: Todos los campos son obligatorios.', ephemeral=True)
+                return
+            
+            # Validar formato de email
+            email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+            if not re.match(email_pattern, email_cliente):
+                await interaction.response.send_message('❌ Error: El formato del email no es válido.', ephemeral=True)
+                return
+            
+            # Validar canal de compra
+            canales_validos = [
+                'Store BGH', 'MELI', 'ICBC MALL', 'BNA', 'FRÁVEGA', 
+                'MEGATONE', 'PROVINCIA', 'CLIC', 'AFINIDAD', 'Carrefour'
+            ]
+            if canal_compra not in canales_validos:
+                await interaction.response.send_message(f'❌ Error: Canal de compra no válido. Opciones válidas: {", ".join(canales_validos)}', ephemeral=True)
+                return
+            
+            from utils.google_sheets import initialize_google_sheets, check_if_pedido_exists
+            from datetime import datetime
+            import pytz
+            
+            if not config.GOOGLE_CREDENTIALS_JSON:
+                await interaction.response.send_message('❌ Error: Las credenciales de Google no están configuradas.', ephemeral=True)
+                return
+            
+            if not config.SPREADSHEET_ID_FAC_A:
+                await interaction.response.send_message('❌ Error: El ID de la hoja de Facturas no está configurado.', ephemeral=True)
+                return
+            
+            client = initialize_google_sheets(config.GOOGLE_CREDENTIALS_JSON)
+            spreadsheet = client.open_by_key(config.SPREADSHEET_ID_FAC_A)
+            sheet_range = "FacB!A:G"  # Usar el rango de Factura B
+            
+            # Obtener la hoja FacB
+            try:
+                sheet = spreadsheet.worksheet('FacB')
+            except:
+                await interaction.response.send_message('❌ Error: No se encontró la hoja "FacB" en el spreadsheet.', ephemeral=True)
+                return
+            
+            rows = sheet.get(sheet_range)
+            header = rows[0] if rows else []
+            
+            # Verificar duplicado
+            is_duplicate = check_if_pedido_exists(sheet, sheet_range, pedido)
+            if is_duplicate:
+                await interaction.response.send_message(f'❌ El número de pedido **{pedido}** ya se encuentra registrado en la hoja de Factura B.', ephemeral=True)
+                return
+            
+            tz = pytz.timezone('America/Argentina/Buenos_Aires')
+            now = datetime.now(tz)
+            fecha_hora = now.strftime('%d/%m/%Y %H:%M:%S')
+            agente = interaction.user.display_name
+            
+            # Preparar la fila según el orden de columnas especificado
+            row_data = [
+                fecha_hora,        # Fecha de carga
+                agente,            # Asesor que carga
+                pedido,            # Número de pedido
+                id_wise,           # ID Caso Wise
+                canal_compra,      # Canal de compra
+                email_cliente,     # Correo electrónico
+                ''                 # Fecha de envío (vacío)
+            ]
+            
+            # Ajustar la cantidad de columnas al header
+            if len(row_data) < len(header):
+                row_data += [''] * (len(header) - len(row_data))
+            elif len(row_data) > len(header):
+                row_data = row_data[:len(header)]
+            
+            sheet.append_row(row_data)
+            
+            confirmation_message = f"""✅ **Factura B registrada exitosamente**\n\n📋 **Detalles:**\n• **N° de Pedido:** {pedido}\n• **ID Caso Wise:** {id_wise}\n• **Canal de Compra:** {canal_compra}\n• **Email Cliente:** {email_cliente}\n• **Agente:** {agente}\n• **Fecha:** {fecha_hora}\n\nLa factura ha sido guardada en Google Sheets."""
+            
+            await interaction.response.send_message(confirmation_message, ephemeral=True)
+            
+        except Exception as error:
+            print('Error general durante el procesamiento del modal de Factura B (on_submit):', error)
+            await interaction.response.send_message(f'❌ Hubo un error al procesar tu factura. Detalles: {error}', ephemeral=True)
+        
+        if not interaction.response.is_done():
+            await interaction.response.send_message('✅ Tarea finalizada.', ephemeral=True)
+
 class Modals(commands.Cog):
     def __init__(self, bot):
         self.bot = bot

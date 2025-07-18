@@ -840,6 +840,7 @@ class PanelComandosView(discord.ui.View):
     def __init__(self):
         super().__init__(timeout=None)
         self.add_item(FacturaAButton())
+        self.add_item(FacturaBButton())
         self.add_item(CambiosDevolucionesButton())
         self.add_item(SolicitudesEnviosButton())
         self.add_item(TrackingButton())
@@ -877,6 +878,26 @@ class IniciarFacturaAButton(discord.ui.Button):
             await interaction.response.send_modal(FacturaAModal())
         except Exception as e:
             print(f'Error en IniciarFacturaAButton: {e}')
+            await interaction.response.send_message('❌ Error al iniciar el flujo. Por favor, inténtalo de nuevo.', ephemeral=True)
+
+class IniciarFacturaBView(discord.ui.View):
+    def __init__(self, user_id):
+        super().__init__(timeout=300)
+        self.add_item(IniciarFacturaBButton(user_id))
+
+class IniciarFacturaBButton(discord.ui.Button):
+    def __init__(self, user_id):
+        super().__init__(label='Iniciar registro de Factura B', style=discord.ButtonStyle.primary, custom_id=f'init_factura_b_{user_id}')
+        self.user_id = user_id
+    async def callback(self, interaction: discord.Interaction):
+        try:
+            if str(interaction.user.id) != str(self.user_id):
+                await interaction.response.send_message('Solo el usuario mencionado puede iniciar este flujo.', ephemeral=True)
+                return
+            from interactions.modals import FacturaBModal
+            await interaction.response.send_modal(FacturaBModal())
+        except Exception as e:
+            print(f'Error en IniciarFacturaBButton: {e}')
             await interaction.response.send_message('❌ Error al iniciar el flujo. Por favor, inténtalo de nuevo.', ephemeral=True)
 
 class IniciarTrackingView(discord.ui.View):
@@ -950,6 +971,39 @@ class FacturaAButton(discord.ui.Button):
                 await interaction.response.send_message('No se configuró el canal de Factura A.', ephemeral=True)
         except Exception as e:
             print(f'Error en FacturaAButton: {e}')
+            if not interaction.response.is_done():
+                await interaction.response.send_message('❌ Error al procesar la solicitud. Por favor, inténtalo de nuevo.', ephemeral=True)
+
+class FacturaBButton(discord.ui.Button):
+    def __init__(self):
+        super().__init__(label='Factura B', emoji='📋', style=discord.ButtonStyle.primary, custom_id='panel_factura_b')
+    async def callback(self, interaction: discord.Interaction):
+        try:
+            from config import TARGET_CHANNEL_ID_FAC_A  # Usar el mismo canal que Factura A
+            canal_id = safe_int(TARGET_CHANNEL_ID_FAC_A)
+            if canal_id:
+                canal = interaction.guild.get_channel(canal_id)
+                if canal:
+                    await interaction.response.defer()
+                    msg_panel = await interaction.followup.send(f'✅ Revisa el canal <#{canal_id}> para continuar el flujo.')
+                    msg = await canal.send(f'📋 {interaction.user.mention}, haz clic en el botón para iniciar el registro de Factura B:', view=IniciarFacturaBView(interaction.user.id))
+                    await asyncio.sleep(20)
+                    try:
+                        await msg_panel.delete()
+                    except:
+                        pass
+                    await asyncio.sleep(100)
+                    try:
+                        await msg.delete()
+                    except:
+                        pass
+                    return
+                else:
+                    await interaction.response.send_message('No se encontró el canal de Factura B.', ephemeral=True)
+            else:
+                await interaction.response.send_message('No se configuró el canal de Factura B.', ephemeral=True)
+        except Exception as e:
+            print(f'Error en FacturaBButton: {e}')
             if not interaction.response.is_done():
                 await interaction.response.send_message('❌ Error al procesar la solicitud. Por favor, inténtalo de nuevo.', ephemeral=True)
 
