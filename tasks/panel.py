@@ -7,7 +7,7 @@ import config
 import json
 from pathlib import Path
 from datetime import datetime
-import utils.google_sheets as google_sheets
+from utils.google_sheets import COLUMNAS_TAREAS_ACTIVAS, COLUMNAS_HISTORIAL, registrar_tarea_activa, agregar_evento_historial
 import asyncio
 import pytz
 import re
@@ -154,7 +154,7 @@ class TaskPanel(commands.Cog):
         try:
             # Inicializar Google Sheets
             await interaction.followup.send('🔄 Inicializando Google Sheets...', ephemeral=True)
-            client = google_sheets.get_sheets_client()
+            client = get_sheets_client()
             
             # Abrir spreadsheet
             await interaction.followup.send('🔄 Abriendo spreadsheet...', ephemeral=True)
@@ -180,9 +180,9 @@ class TaskPanel(commands.Cog):
                     
                     # Agregar headers según el tipo de hoja
                     if hoja == 'Tareas Activas':
-                        nueva_hoja.append_row(google_sheets.COLUMNAS_TAREAS_ACTIVAS)
+                        nueva_hoja.append_row(COLUMNAS_TAREAS_ACTIVAS)
                     elif hoja == 'Historial':
-                        nueva_hoja.append_row(google_sheets.COLUMNAS_HISTORIAL)
+                        nueva_hoja.append_row(COLUMNAS_HISTORIAL)
                 
                 await interaction.followup.send('✅ **¡Hojas creadas exitosamente!**\n\nAhora puedes usar el panel de tareas.', ephemeral=True)
             else:
@@ -269,7 +269,7 @@ class TaskStartButton(discord.ui.Button):
         
         try:
             # --- Google Sheets ---
-            client = google_sheets.get_sheets_client()
+            client = get_sheets_client()
             spreadsheet = client.open_by_key(config.GOOGLE_SHEET_ID_TAREAS)
             
             # Verificar qué hojas existen
@@ -294,10 +294,10 @@ class TaskStartButton(discord.ui.Button):
             inicio = now.strftime('%d/%m/%Y %H:%M:%S')
             
             # Registrar tarea activa
-            tarea_id = google_sheets.registrar_tarea_activa(sheet_activas, user_id, usuario, tarea, observaciones, inicio)
+            tarea_id = registrar_tarea_activa(sheet_activas, user_id, usuario, tarea, observaciones, inicio)
             
             # Agregar evento al historial
-            google_sheets.agregar_evento_historial(
+            agregar_evento_historial(
                 sheet_historial,
                 user_id,
                 tarea_id,
@@ -355,7 +355,7 @@ class TaskObservacionesModal(discord.ui.Modal, title='Registrar Observaciones'):
         
         try:
             # --- Google Sheets ---
-            client = google_sheets.get_sheets_client()
+            client = get_sheets_client()
             spreadsheet = client.open_by_key(config.GOOGLE_SHEET_ID_TAREAS)
             sheet_activas = spreadsheet.worksheet('Tareas Activas')
             sheet_historial = spreadsheet.worksheet('Historial')
@@ -367,9 +367,9 @@ class TaskObservacionesModal(discord.ui.Modal, title='Registrar Observaciones'):
             now = datetime.now(tz)
             inicio = now.strftime('%d/%m/%Y %H:%M:%S')
             
-            tarea_id = google_sheets.registrar_tarea_activa(sheet_activas, user_id, usuario, tarea, obs, inicio)
+            tarea_id = registrar_tarea_activa(sheet_activas, user_id, usuario, tarea, obs, inicio)
             
-            google_sheets.agregar_evento_historial(
+            agregar_evento_historial(
                 sheet_historial,
                 user_id,
                 tarea_id,
@@ -532,7 +532,7 @@ class PausarReanudarButton(discord.ui.Button):
         await interaction.response.defer()
         
         try:
-            client = google_sheets.get_sheets_client()
+            client = get_sheets_client()
             spreadsheet = client.open_by_key(config.GOOGLE_SHEET_ID_TAREAS)
             sheet_activas = spreadsheet.worksheet('Tareas Activas')
             sheet_historial = spreadsheet.worksheet('Historial')
@@ -713,7 +713,7 @@ class PausarReanudarButtonPersistent(discord.ui.Button):
                 import utils.google_sheets as google_sheets
                 import config
                 
-                client = google_sheets.get_sheets_client()
+                client = get_sheets_client()
                 spreadsheet = client.open_by_key(config.GOOGLE_SHEET_ID_TAREAS)
                 sheet_activas = spreadsheet.worksheet('Tareas Activas')
                 
@@ -730,7 +730,7 @@ class PausarReanudarButtonPersistent(discord.ui.Button):
                 import utils.google_sheets as google_sheets
                 import config
                 
-                client = google_sheets.get_sheets_client()
+                client = get_sheets_client()
                 spreadsheet = client.open_by_key(config.GOOGLE_SHEET_ID_TAREAS)
                 sheet_activas = spreadsheet.worksheet('Tareas Activas')
                 
@@ -747,7 +747,7 @@ class PausarReanudarButtonPersistent(discord.ui.Button):
                 return
             
             # Ahora proceder con la lógica de pausar/reanudar
-            client = google_sheets.get_sheets_client()
+            client = get_sheets_client()
             spreadsheet = client.open_by_key(config.GOOGLE_SHEET_ID_TAREAS)
             sheet_activas = spreadsheet.worksheet('Tareas Activas')
             sheet_historial = spreadsheet.worksheet('Historial')
@@ -840,7 +840,7 @@ class FinalizarButtonPersistent(discord.ui.Button):
             import utils.google_sheets as google_sheets
             import config
             
-            client = google_sheets.get_sheets_client()
+            client = get_sheets_client()
             spreadsheet = client.open_by_key(config.GOOGLE_SHEET_ID_TAREAS)
             sheet_activas = spreadsheet.worksheet('Tareas Activas')
             
