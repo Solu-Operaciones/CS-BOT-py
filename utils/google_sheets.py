@@ -4,31 +4,28 @@ from datetime import datetime
 import pytz
 import discord
 import json
-from utils.google_client_manager import get_sheets_client, get_drive_client
 
-def get_sheets_client():
-    # try:
+def initialize_google_sheets(credentials_json: str):
+    """Inicializar cliente de Google Sheets"""
+    try:
         scopes = [
             'https://www.googleapis.com/auth/spreadsheets',
             'https://www.googleapis.com/auth/drive'
         ]
         
         # Validar que credentials_json sea un JSON válido
-        # try:
         if isinstance(credentials_json, str):
             creds_dict = json.loads(credentials_json)
         else:
             creds_dict = credentials_json
-        # except json.JSONDecodeError as e:
-        #     raise ValueError(f"Error al parsear credenciales JSON: {e}")
         
         credentials = Credentials.from_service_account_info(creds_dict, scopes=scopes)
         client = gspread.authorize(credentials)
         print("Instancia de Google Sheets inicializada.")
         return client
-    # except Exception as error:
-    #     print("Error al inicializar Google Sheets:", error)
-    #     raise
+    except Exception as error:
+        print("Error al inicializar Google Sheets:", error)
+        raise
 
 def check_if_pedido_exists(sheet, sheet_range: str, pedido_number: str) -> bool:
     """
