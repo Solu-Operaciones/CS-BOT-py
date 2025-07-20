@@ -10,7 +10,7 @@ GUILD_ID = os.getenv('GUILD_ID')
 
 # Configuración de permisos para comandos de setup
 # IDs de usuarios que pueden usar comandos de setup (además de administradores)
-SETUP_USER_IDS = ['1297896768523993120', '894659916525109288']
+SETUP_USER_IDS = ['1297896768523993120'] # 894659916525109288 ID DE NICO
 SETUP_BO_ROL= 1300888951619584101
 
 # IDs de canales específicos
