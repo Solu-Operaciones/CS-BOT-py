@@ -142,7 +142,6 @@ def find_or_create_drive_folder(drive_service, parent_id: str, folder_name: str)
 import time
 
 # Delays implementados para evitar rate limiting en Google Drive API
-# Sugerido por el jefe basado en experiencia previa con el bot anterior
 
 def upload_file_to_drive(drive_service, folder_id: str, attachment) -> dict:
     """
@@ -155,7 +154,7 @@ def upload_file_to_drive(drive_service, folder_id: str, attachment) -> dict:
     if not drive_service or not folder_id or not attachment or not getattr(attachment, 'url', None) or not getattr(attachment, 'filename', None):
         raise ValueError("upload_file_to_drive: Parámetros incompletos.")
     try:
-        # Delay de 1 segundo para evitar rate limiting (como sugirió el jefe)
+        # Delay de 1 segundo para evitar rate limiting 
         time.sleep(1)
         # Verificar que la carpeta existe y tenemos permisos
         try:

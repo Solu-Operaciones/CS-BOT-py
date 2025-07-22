@@ -122,9 +122,12 @@ class CanalCompraSelect(discord.ui.Select):
             discord.SelectOption(label='FRÁVEGA', value='FRÁVEGA'),
             discord.SelectOption(label='MEGATONE', value='MEGATONE'),
             discord.SelectOption(label='PROVINCIA', value='PROVINCIA'),
-            discord.SelectOption(label='CLIC', value='CLIC'),
+            discord.SelectOption(label='OnCity', value='OnCity'),
             discord.SelectOption(label='AFINIDAD', value='AFINIDAD'),
             discord.SelectOption(label='Carrefour', value='Carrefour'),
+            discord.SelectOption(label='Visuar', value='Visuar'),   
+            discord.SelectOption(label='Samsung', value='Samsung'),
+
         ]
         super().__init__(placeholder='Selecciona el canal de compra...', min_values=1, max_values=1, options=options, custom_id='canalCompraSelect')
 
