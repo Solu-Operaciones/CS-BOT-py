@@ -94,44 +94,44 @@ async def check_errors():
         return
     
     try:
-            if not config.SPREADSHEET_ID_CASOS:
-                print("Error: SPREADSHEET_ID_CASOS no está configurado")
-                return
-            if not config.GUILD_ID:
-                print("Error: GUILD_ID no está configurado")
-                return
-            spreadsheet = sheets_instance.open_by_key(config.SPREADSHEET_ID_CASOS)
-            for sheet_range, channel_id in config.MAPA_RANGOS_ERRORES.items():
-                if not sheet_range or not channel_id:
-                    continue
-                hoja_nombre = None
-                sheet_range_puro = sheet_range
-                if '!' in sheet_range:
-                    partes = sheet_range.split('!')
-                    if len(partes) == 2:
-                        hoja_nombre = partes[0].strip("'")
-                        sheet_range_puro = partes[1]
-                try:
-                    if hoja_nombre:
-                        sheet = spreadsheet.worksheet(hoja_nombre)
-                    else:
-                        sheet = spreadsheet.sheet1
-                except Exception as sheet_error:
-                    print(f"Error al abrir la hoja {hoja_nombre or '[default]'}: {sheet_error}")
-                    continue
-                try:
-                    from utils.google_sheets import check_sheet_for_errors
-                    await check_sheet_for_errors(
-                        bot,
-                        sheet,
-                        sheet_range,
-                        int(channel_id),
-                        int(config.GUILD_ID)
-                    )
-                except Exception as error:
-                    print(f"Error al verificar errores en el rango {sheet_range}: {error}")
-        except Exception as error:
-            print(f"Error en la verificación periódica: {error}")
+        if not config.SPREADSHEET_ID_CASOS:
+            print("Error: SPREADSHEET_ID_CASOS no está configurado")
+            return
+        if not config.GUILD_ID:
+            print("Error: GUILD_ID no está configurado")
+            return
+        spreadsheet = sheets_instance.open_by_key(config.SPREADSHEET_ID_CASOS)
+        for sheet_range, channel_id in config.MAPA_RANGOS_ERRORES.items():
+            if not sheet_range or not channel_id:
+                continue
+            hoja_nombre = None
+            sheet_range_puro = sheet_range
+            if '!' in sheet_range:
+                partes = sheet_range.split('!')
+                if len(partes) == 2:
+                    hoja_nombre = partes[0].strip("'")
+                    sheet_range_puro = partes[1]
+            try:
+                if hoja_nombre:
+                    sheet = spreadsheet.worksheet(hoja_nombre)
+                else:
+                    sheet = spreadsheet.sheet1
+            except Exception as sheet_error:
+                print(f"Error al abrir la hoja {hoja_nombre or '[default]'}: {sheet_error}")
+                continue
+            try:
+                from utils.google_sheets import check_sheet_for_errors
+                await check_sheet_for_errors(
+                    bot,
+                    sheet,
+                    sheet_range,
+                    int(channel_id),
+                    int(config.GUILD_ID)
+                )
+            except Exception as error:
+                print(f"Error al verificar errores en el rango {sheet_range}: {error}")
+    except Exception as error:
+        print(f"Error en la verificación periódica: {error}")
 
 @check_errors.before_loop
 async def before_check_errors():
