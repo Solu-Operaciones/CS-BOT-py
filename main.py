@@ -92,7 +92,8 @@ async def check_errors():
     if not sheets_instance:
         print("⚠️ Verificación de errores omitida: instancia de Sheets no disponible")
         return
-        try:
+    
+    try:
             if not config.SPREADSHEET_ID_CASOS:
                 print("Error: SPREADSHEET_ID_CASOS no está configurado")
                 return

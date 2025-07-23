@@ -4,6 +4,7 @@ from googleapiclient.http import MediaIoBaseUpload
 import requests
 import io
 import json
+import time
 
 def initialize_google_drive(credentials_json: str):
     """Inicializar cliente de Google Drive"""
