@@ -8,6 +8,9 @@ load_dotenv()
 TOKEN = os.getenv('DISCORD_TOKEN')
 GUILD_ID = os.getenv('GUILD_ID')
 
+idEzquiel = 1297896768523993120
+idPablo = 807050259531431957
+
 # Configuración de permisos para comandos de setup
 # IDs de usuarios que pueden usar comandos de setup (además de administradores)
 # SETUP_USER_IDS = ['Ezequiel', 'Nicolas', 'Pablo']

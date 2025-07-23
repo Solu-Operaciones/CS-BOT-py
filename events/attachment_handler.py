@@ -24,6 +24,7 @@ class SolicitudCargadaButton(discord.ui.Button):
         # Verificar si el usuario tiene el rol configurado o es Ezequiel Arraygada
         has_role = False
         user_name = interaction.user.display_name
+        user_id = interaction.user.id
         
         # Verificar rol configurado - solo funciona en contexto de guild
         if interaction.guild:
@@ -43,7 +44,7 @@ class SolicitudCargadaButton(discord.ui.Button):
                             break
         
         # Verificar si es Ezequiel Arraygada
-        if user_name == "Ezequiel Arraygada":
+        if user_name == "Ezequiel Arraygada" or user_id == int(config.idEzquiel) or user_id == int(config.idPablo):
             has_role = True
         
         if not has_role:
