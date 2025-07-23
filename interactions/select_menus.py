@@ -147,6 +147,52 @@ class CanalCompraView(discord.ui.View):
 def build_canal_compra_menu():
     return CanalCompraView()
 
+class TipoICBCSelect(discord.ui.Select):
+    def __init__(self):
+        options = [
+            discord.SelectOption(label='Solicitud Factura B', value='Solicitud Factura B'),
+            discord.SelectOption(label='Solicitud Factura A', value='Solicitud Factura A'),
+            discord.SelectOption(label='Cambio de Dirección', value='Cambio de Dirección'),
+            discord.SelectOption(label='Reenvío', value='Reenvío'),
+            discord.SelectOption(label='Tracking/Estado de pedido', value='Tracking/Estado de pedido'),
+            discord.SelectOption(label='Reembolsos', value='Reembolsos'),
+            discord.SelectOption(label='Cambio por producto dañado', value='Cambio por producto dañado'),
+            discord.SelectOption(label='Cambio por producto incorrecto', value='Cambio por producto incorrecto'),
+            discord.SelectOption(label='Cambio por falla técnica', value='Cambio por falla técnica'),
+            discord.SelectOption(label='Devolución por falla técnica', value='Devolución por falla técnica'),
+            discord.SelectOption(label='Devolución por arrepentimiento', value='Devolución por arrepentimiento'),
+            discord.SelectOption(label='Devolución sin motivo', value='Devolución sin motivo'),
+            discord.SelectOption(label='Derivación a Service', value='Derivación a Service'),
+            discord.SelectOption(label='Error de Entrega', value='Error de Entrega'),
+            discord.SelectOption(label='Error de navegación', value='Error de navegación'),
+            discord.SelectOption(label='Error de Publicación', value='Error de Publicación'),
+            discord.SelectOption(label='Pieza Faltante', value='Pieza Faltante'),
+            discord.SelectOption(label='Cancelación sin motivo', value='Cancelación sin motivo'),
+            discord.SelectOption(label='Cancelación por demora', value='Cancelación por demora'),
+            discord.SelectOption(label='Cancelación por no emitir Factura A', value='Cancelación por no emitir Factura A'),
+            discord.SelectOption(label='Cancelación por arrepentimiento', value='Cancelación por arrepentimiento'),
+            discord.SelectOption(label='Consulta técnica de producto', value='Consulta técnica de producto'),
+            discord.SelectOption(label='Garantía', value='Garantía'),
+            discord.SelectOption(label='Demora envío', value='Demora envío'),
+        ]
+        super().__init__(placeholder='Selecciona el tipo de solicitud ICBC...', min_values=1, max_values=1, options=options, custom_id='icbcTipoSelect')
+
+    async def callback(self, interaction: discord.Interaction):
+        from utils.state_manager import set_user_state
+        user_id = str(interaction.user.id)
+        selected_tipo = self.values[0]
+        set_user_state(user_id, {"type": "icbc", "paso": 2, "tipoICBC": selected_tipo}, "icbc")
+        from interactions.modals import ICBCModal
+        await interaction.response.send_modal(ICBCModal())
+
+class TipoICBCView(discord.ui.View):
+    def __init__(self):
+        super().__init__(timeout=120)
+        self.add_item(TipoICBCSelect())
+
+def build_tipo_icbc_menu():
+    return TipoICBCView()
+
 class SelectMenus(commands.Cog):
     def __init__(self, bot):
         self.bot = bot

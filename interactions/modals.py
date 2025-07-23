@@ -1487,5 +1487,171 @@ class Modals(commands.Cog):
         modal = PiezaFaltanteModal()
         await ctx.send_modal(modal)
 
+    @commands.command()
+    async def icbc(self, ctx):
+        """Muestra el modal de ICBC"""
+        modal = ICBCModal()
+        await ctx.send_modal(modal)
+
+class ICBCModal(discord.ui.Modal, title='Registrar Solicitud ICBC'):
+    def __init__(self):
+        super().__init__(custom_id='icbcModal')
+        self.numero_hilo = discord.ui.TextInput(
+            label="Número de Hilo",
+            placeholder="Ingresa el número de hilo...",
+            custom_id="numeroHiloInput",
+            style=discord.TextStyle.short,
+            required=True,
+            max_length=100
+        )
+        self.numero_pedido = discord.ui.TextInput(
+            label="Número de Pedido",
+            placeholder="Ingresa el número de pedido...",
+            custom_id="numeroPedidoInput",
+            style=discord.TextStyle.short,
+            required=True,
+            max_length=100
+        )
+        self.observaciones = discord.ui.TextInput(
+            label="Observaciones",
+            placeholder="Observaciones (opcional)...",
+            custom_id="observacionesInput",
+            style=discord.TextStyle.paragraph,
+            required=False,
+            max_length=1000
+        )
+        
+        # Agregar los componentes al modal
+        self.add_item(self.numero_hilo)
+        self.add_item(self.numero_pedido)
+        self.add_item(self.observaciones)
+
+    async def on_submit(self, interaction: discord.Interaction):
+        import config
+        import utils.state_manager as state_manager
+        from utils.state_manager import generar_solicitud_id, cleanup_expired_states
+        cleanup_expired_states()
+        try:
+            user_id = str(interaction.user.id)
+            solicitud_id = generar_solicitud_id(user_id)
+            numero_hilo = self.numero_hilo.value.strip()
+            numero_pedido = self.numero_pedido.value.strip()
+            observaciones = self.observaciones.value.strip()
+            
+            if not numero_hilo or not numero_pedido:
+                await interaction.response.send_message('❌ Error: Los campos Número de Hilo y Número de Pedido son requeridos.', ephemeral=True)
+                return
+            
+            if not config.GOOGLE_CREDENTIALS_JSON:
+                await interaction.response.send_message('❌ Error: Las credenciales de Google no están configuradas.', ephemeral=True)
+                return
+            
+            if not config.SPREADSHEET_ID_ICBC:
+                await interaction.response.send_message('❌ Error: El ID de la hoja de ICBC no está configurado.', ephemeral=True)
+                return
+            
+            from utils.google_sheets import check_if_pedido_exists
+            from utils.google_client_manager import get_sheets_client
+            from datetime import datetime
+            import pytz
+            
+            client = get_sheets_client()
+            spreadsheet = client.open_by_key(config.SPREADSHEET_ID_ICBC)
+            sheet_range = getattr(config, 'GOOGLE_SHEET_RANGE_ICBC', 'ICBC!A:F')
+            hoja_nombre = None
+            
+            if '!' in sheet_range:
+                partes = sheet_range.split('!')
+                if len(partes) == 2:
+                    hoja_nombre = partes[0].strip("'")
+                    sheet_range_puro = partes[1]
+                else:
+                    hoja_nombre = None
+                    sheet_range_puro = sheet_range
+            else:
+                sheet_range_puro = sheet_range
+            
+            if hoja_nombre:
+                sheet = spreadsheet.worksheet(hoja_nombre)
+            else:
+                sheet = spreadsheet.sheet1
+            
+            rows = sheet.get(sheet_range_puro)
+            
+            # Verificar si el pedido ya existe
+            is_duplicate = check_if_pedido_exists(sheet, sheet_range_puro, numero_pedido)
+            if is_duplicate:
+                await interaction.response.send_message(f'❌ El número de pedido **{numero_pedido}** ya se encuentra registrado en la hoja de ICBC.', ephemeral=True)
+                return
+            
+            tz = pytz.timezone('America/Argentina/Buenos_Aires')
+            now = datetime.now(tz)
+            fecha_hora = now.strftime('%d-%m-%Y %H:%M:%S')
+            
+            header = rows[0] if rows else []
+            
+            # Normalizar nombres de columnas
+            def normaliza_columna(nombre):
+                if not nombre:
+                    return ''
+                return str(nombre).strip().lower().replace(' ', '_').replace('á', 'a').replace('é', 'e').replace('í', 'i').replace('ó', 'o').replace('ú', 'u')
+            
+            # Crear diccionario de columnas normalizadas
+            columnas = {normaliza_columna(col): i for i, col in enumerate(header)}
+            
+            # Obtener el tipo de ICBC del estado del usuario
+            user_state = state_manager.get_user_state(user_id, "icbc")
+            tipo_icbc = user_state.get('tipoICBC', 'Sin especificar') if user_state else 'Sin especificar'
+            
+            # Preparar datos para insertar
+            nueva_fila = [''] * len(header)
+            
+            # Mapear datos a las columnas correctas por nombre
+            if 'numero_de_hilo' in columnas:
+                nueva_fila[columnas['numero_de_hilo']] = numero_hilo
+            if 'numero_de_pedido' in columnas:
+                nueva_fila[columnas['numero_de_pedido']] = numero_pedido
+            if 'tipo' in columnas:
+                nueva_fila[columnas['tipo']] = tipo_icbc
+            if 'observaciones' in columnas:
+                nueva_fila[columnas['observaciones']] = observaciones
+            if 'fecha_y_hora' in columnas:
+                nueva_fila[columnas['fecha_y_hora']] = fecha_hora
+            if 'agente' in columnas:
+                nueva_fila[columnas['agente']] = str(interaction.user)
+            
+            # Insertar la nueva fila
+            sheet.append_row(nueva_fila)
+            
+            # Limpiar el estado del usuario
+            state_manager.delete_user_state(user_id, "icbc")
+            
+            # Enviar confirmación
+            embed = discord.Embed(
+                title='✅ Solicitud ICBC Registrada Exitosamente',
+                description=f'Se ha registrado la solicitud ICBC en el sistema.',
+                color=discord.Color.green(),
+                timestamp=datetime.now()
+            )
+            
+            embed.add_field(name='🏦 Tipo', value=tipo_icbc, inline=True)
+            embed.add_field(name='🧵 Número de Hilo', value=numero_hilo, inline=True)
+            embed.add_field(name='📦 Número de Pedido', value=numero_pedido, inline=True)
+            embed.add_field(name='👤 Agente', value=interaction.user.mention, inline=True)
+            embed.add_field(name='📅 Fecha y Hora', value=fecha_hora, inline=True)
+            
+            if observaciones:
+                embed.add_field(name='📝 Observaciones', value=observaciones, inline=False)
+            
+            embed.set_footer(text=f'Solicitud ID: {solicitud_id}')
+            
+            await interaction.response.send_message(embed=embed, ephemeral=True)
+            
+        except Exception as e:
+            print(f'Error en ICBCModal: {e}')
+            import traceback
+            traceback.print_exc()
+            await interaction.response.send_message(f'❌ Error al registrar la solicitud ICBC: {str(e)}', ephemeral=True)
+
 async def setup(bot):
     await bot.add_cog(Modals(bot)) 

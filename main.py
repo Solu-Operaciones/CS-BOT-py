@@ -6,8 +6,6 @@ import logging
 from utils.google_client_manager import initialize_google_clients, get_sheets_client, get_drive_client
 from utils.andreani import get_andreani_tracking
 from utils.discord_logger import setup_discord_logging, log_exception
-# from utils.qa_service import get_answer_from_manual
-# from utils.manual_processor import load_and_cache_manual, get_manual_text
 
 # Configuración del bot con intents
 intents = discord.Intents.all()
@@ -94,7 +92,8 @@ async def check_errors():
     if not sheets_instance:
         print("⚠️ Verificación de errores omitida: instancia de Sheets no disponible")
         return
-        try:
+    
+    try:
             if not config.SPREADSHEET_ID_CASOS:
                 print("Error: SPREADSHEET_ID_CASOS no está configurado")
                 return
