@@ -3,6 +3,7 @@ from discord import app_commands
 from discord.ext import commands
 import config
 from utils.andreani import get_andreani_tracking
+from utils.google_client_manager import get_sheets_client
 from interactions.modals import FacturaAModal, PiezaFaltanteModal
 import re
 from datetime import datetime
@@ -396,6 +397,30 @@ class InteractionCommands(commands.Cog):
             print('Error al mostrar el modal de Pieza Faltante:', error)
             await interaction.response.send_message(
                 'Hubo un error al abrir el formulario de Pieza Faltante. Por favor, inténtalo de nuevo.', ephemeral=True)
+
+    @maybe_guild_decorator()
+    @app_commands.command(name="icbc", description="Inicia el registro de una solicitud ICBC")
+    async def icbc(self, interaction: discord.Interaction):
+        target_cat = get_target_category_id()
+        if target_cat and getattr(interaction.channel, 'category_id', None) != target_cat:
+            await interaction.response.send_message(
+                f"Este comando solo puede ser usado en la categoría <#{target_cat}>.", ephemeral=True)
+            return
+        # Restricción de canal
+        if hasattr(config, 'TARGET_CHANNEL_ID_ICBC') and str(interaction.channel_id) != str(config.TARGET_CHANNEL_ID_ICBC):
+            await interaction.response.send_message(
+                f"Este comando solo puede ser usado en el canal <#{config.TARGET_CHANNEL_ID_ICBC}>.", ephemeral=True)
+            return
+        try:
+            from interactions.select_menus import build_tipo_icbc_menu
+            view = build_tipo_icbc_menu()
+            await interaction.response.send_message(
+                '🏦 Por favor, selecciona el tipo de solicitud ICBC:', view=view, ephemeral=True)
+            print('Menú de tipo ICBC mostrado al usuario.')
+        except Exception as error:
+            print('Error al mostrar el menú de tipo ICBC:', error)
+            await interaction.response.send_message(
+                'Hubo un error al abrir el formulario de solicitud ICBC. Por favor, inténtalo de nuevo.', ephemeral=True)
 
     @maybe_guild_decorator()
     @app_commands.command(name="verificar-errores", description="Fuerza la verificación manual de errores en todas las hojas configuradas")
