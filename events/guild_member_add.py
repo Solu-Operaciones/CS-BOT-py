@@ -8,6 +8,8 @@ class GuildMemberAdd(commands.Cog):
 
     @commands.Cog.listener()
     async def on_member_join(self, member: discord.Member):
+        pass
+        """
         print(f"Nuevo miembro unido: {member} (ID: {member.id}) al servidor {member.guild.name} (ID: {member.guild.id}).")
 
         # Verificar si el servidor es el configurado
@@ -20,6 +22,7 @@ class GuildMemberAdd(commands.Cog):
         if not target_channel_id:
             print('TARGET_CHANNEL_ID_BUSCAR_CASO no configurado en config.py. No se enviará mensaje de bienvenida.')
             return
+        """
 
 
 async def setup(bot):
