@@ -353,5 +353,143 @@ class AttachmentHandler(commands.Cog):
                 print(f'Error al subir adjuntos a Google Drive para Factura A: {error}')
                 await message.reply(f'❌ Hubo un error al subir los archivos a Google Drive. Detalles: {error}')
 
+class NotaCreditoCargadaButton(discord.ui.Button):
+    def __init__(self, pedido, caso, agente, fecha_carga, message_id):
+        super().__init__(
+            label='Solicitud cargada',
+            style=discord.ButtonStyle.success,
+            custom_id=f'nota_credito_cargada_{pedido}_{message_id}'
+        )
+        self.pedido = pedido
+        self.caso = caso
+        self.agente = agente
+        self.fecha_carga = fecha_carga
+        self.message_id = message_id
+
+    async def callback(self, interaction: discord.Interaction):
+        # Verificar si el usuario tiene el rol configurado o es Ezequiel Arraygada
+        has_role = False
+        user_name = interaction.user.display_name
+        user_id = interaction.user.id
+        
+        # Verificar rol configurado - solo funciona en contexto de guild
+        if interaction.guild:
+            member = interaction.guild.get_member(interaction.user.id)
+            if member:
+                bo_role_id = getattr(config, 'SETUP_BO_ROL', None)
+                if bo_role_id:
+                    for role in member.roles:
+                        if str(role.id) == str(bo_role_id):
+                            has_role = True
+                            break
+                else:
+                    # Fallback: verificar por nombre si no hay ID configurado
+                    for role in member.roles:
+                        if role.name == "Bgh Back Office":
+                            has_role = True
+                            break
+        
+        # Verificar si es Ezequiel Arraygada
+        if user_name == "Ezequiel Arraygada" or user_id == int(config.idEzquiel) or user_id == int(config.idPablo):
+            has_role = True
+        
+        if not has_role:
+            await interaction.response.send_message('❌ Solo los agentes de Back Office pueden marcar solicitudes como cargadas.', ephemeral=True)
+            return
+        
+        try:
+            # Verificar credenciales antes de usar
+            if not config.GOOGLE_CREDENTIALS_JSON or not config.SPREADSHEET_ID_FAC_A:
+                await interaction.response.send_message('❌ Error de configuración: Credenciales de Google no configuradas.', ephemeral=True)
+                return
+            
+            # Actualizar Google Sheets
+            client = get_sheets_client()
+            spreadsheet = client.open_by_key(config.SPREADSHEET_ID_FAC_A)
+            sheet_range = getattr(config, 'SHEET_RANGE_NC', 'NC!A:G')
+            
+            # Determinar la hoja
+            hoja_nombre = None
+            if '!' in sheet_range:
+                partes = sheet_range.split('!')
+                if len(partes) == 2:
+                    hoja_nombre = partes[0].strip("'")
+                    sheet_range_puro = partes[1]
+                else:
+                    hoja_nombre = None
+                    sheet_range_puro = sheet_range
+            else:
+                sheet_range_puro = sheet_range
+            
+            if hoja_nombre:
+                sheet = spreadsheet.worksheet(hoja_nombre)
+            else:
+                sheet = spreadsheet.sheet1
+            
+            # Buscar la fila del pedido
+            rows = sheet.get(sheet_range_puro)
+            if not rows or len(rows) <= 1:
+                await interaction.response.send_message('❌ No se encontró la solicitud en Google Sheets.', ephemeral=True)
+                return
+            
+            header_row = rows[0]
+            from utils.google_sheets import get_col_index
+            pedido_col = get_col_index(header_row, 'Número de Pedido')
+            check_bo_col = get_col_index(header_row, 'Check BO Carga')
+            
+            if pedido_col is None:
+                await interaction.response.send_message('❌ No se encontró la columna "Número de Pedido" en la hoja.', ephemeral=True)
+                return
+            
+            if check_bo_col is None:
+                await interaction.response.send_message('❌ No se encontró la columna "Check BO Carga" en la hoja.', ephemeral=True)
+                return
+            
+            # Buscar la fila del pedido
+            pedido_found = False
+            for i, row in enumerate(rows[1:], start=2):  # Empezar desde la fila 2 (índice 1)
+                if len(row) > pedido_col and str(row[pedido_col]).strip() == self.pedido:
+                    pedido_found = True
+                    # Actualizar la columna Check BO Carga
+                    tz = pytz.timezone('America/Argentina/Buenos_Aires')
+                    now = datetime.now(tz)
+                    fecha_hora_confirmacion = now.strftime('%d-%m-%Y %H:%M:%S')
+                    
+                    # Actualizar la celda específica
+                    cell_address = f'{chr(65 + check_bo_col)}{i}'  # Convertir índice a letra de columna
+                    sheet.update(cell_address, fecha_hora_confirmacion)
+                    break
+            
+            if not pedido_found:
+                await interaction.response.send_message(f'❌ No se encontró el pedido {self.pedido} en la hoja.', ephemeral=True)
+                return
+            
+            # Deshabilitar el botón
+            self.disabled = True
+            self.label = '✅ Confirmado'
+            self.style = discord.ButtonStyle.secondary
+            
+            # Actualizar el mensaje
+            await interaction.message.edit(view=self.view)
+            
+            # Enviar confirmación
+            await interaction.response.send_message(
+                f'✅ **Solicitud de Nota de Crédito confirmada exitosamente.**\n'
+                f'📦 Pedido: {self.pedido}\n'
+                f'📝 Caso: {self.caso}\n'
+                f'👤 Confirmado por: {interaction.user.mention}\n'
+                f'📅 Fecha de confirmación: {fecha_hora_confirmacion}',
+                ephemeral=True
+            )
+            
+        except Exception as e:
+            print(f'Error en NotaCreditoCargadaButton: {e}')
+            await interaction.response.send_message(f'❌ Error al confirmar la solicitud: {str(e)}', ephemeral=True)
+
+class NotaCreditoCargadaView(discord.ui.View):
+    def __init__(self, pedido, caso, agente, fecha_carga, message_id):
+        super().__init__(timeout=None)
+        self.add_item(NotaCreditoCargadaButton(pedido, caso, agente, fecha_carga, message_id))
+
 async def setup(bot):
     await bot.add_cog(AttachmentHandler(bot)) 

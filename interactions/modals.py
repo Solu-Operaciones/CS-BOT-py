@@ -1502,7 +1502,7 @@ class ICBCModal(discord.ui.Modal, title='Registrar Solicitud ICBC'):
             custom_id="numeroHiloInput",
             style=discord.TextStyle.short,
             required=True,
-            max_length=100
+            max_length=6
         )
         self.numero_pedido = discord.ui.TextInput(
             label="Número de Pedido",
@@ -1510,7 +1510,7 @@ class ICBCModal(discord.ui.Modal, title='Registrar Solicitud ICBC'):
             custom_id="numeroPedidoInput",
             style=discord.TextStyle.short,
             required=True,
-            max_length=100
+            max_length=15
         )
         self.observaciones = discord.ui.TextInput(
             label="Observaciones",
@@ -1652,6 +1652,182 @@ class ICBCModal(discord.ui.Modal, title='Registrar Solicitud ICBC'):
             import traceback
             traceback.print_exc()
             await interaction.response.send_message(f'❌ Error al registrar la solicitud ICBC: {str(e)}', ephemeral=True)
+
+class NotaCreditoModal(discord.ui.Modal, title='Registrar Nota de Crédito'):
+    def __init__(self):
+        super().__init__(custom_id='notaCreditoModal')
+        self.pedido = discord.ui.TextInput(
+            label="Número de Pedido",
+            placeholder="Ingresa el número de pedido...",
+            custom_id="pedidoInput",
+            style=discord.TextStyle.short,
+            required=True,
+            max_length=30
+        )
+        self.caso = discord.ui.TextInput(
+            label="Número de Caso",
+            placeholder="Ingresa el número de caso...",
+            custom_id="casoInput",
+            style=discord.TextStyle.short,
+            required=True,
+            max_length=10
+        )
+        self.email = discord.ui.TextInput(
+            label="Email del Cliente",
+            placeholder="ejemplo@email.com",
+            custom_id="emailInput",
+            style=discord.TextStyle.short,
+            required=True,
+            max_length=40
+        )
+        self.observaciones = discord.ui.TextInput(
+            label="Observaciones",
+            placeholder="Observaciones adicionales (opcional)...",
+            custom_id="observacionesInput",
+            style=discord.TextStyle.paragraph,
+            required=False,
+            max_length=1000
+        )
+        
+        # Agregar los componentes al modal
+        self.add_item(self.pedido)
+        self.add_item(self.caso)
+        self.add_item(self.email)
+        self.add_item(self.observaciones)
+
+    async def on_submit(self, interaction: discord.Interaction):
+        import config
+        import utils.state_manager as state_manager
+        from utils.state_manager import generar_solicitud_id, cleanup_expired_states
+        cleanup_expired_states()
+        try:
+            user_id = str(interaction.user.id)
+            solicitud_id = generar_solicitud_id(user_id)
+            pedido = self.pedido.value.strip()
+            caso = self.caso.value.strip()
+            email = self.email.value.strip()
+            observaciones = self.observaciones.value.strip()
+            
+            if not pedido or not caso or not email:
+                await interaction.response.send_message('❌ Error: Los campos Pedido, Caso y Email son requeridos.', ephemeral=True)
+                return
+                
+            if not config.GOOGLE_CREDENTIALS_JSON:
+                await interaction.response.send_message('❌ Error: Las credenciales de Google no están configuradas.', ephemeral=True)
+                return
+                
+            if not config.SPREADSHEET_ID_FAC_A:
+                await interaction.response.send_message('❌ Error: El ID de la hoja no está configurado.', ephemeral=True)
+                return
+                
+            from utils.google_sheets import check_if_pedido_exists
+            from utils.google_client_manager import get_sheets_client
+            from datetime import datetime
+            import pytz
+            
+            client = get_sheets_client()
+            spreadsheet = client.open_by_key(config.SPREADSHEET_ID_FAC_A)
+            sheet_range = getattr(config, 'SHEET_RANGE_NC', 'NC!A:G')
+            hoja_nombre = None
+            
+            if '!' in sheet_range:
+                partes = sheet_range.split('!')
+                if len(partes) == 2:
+                    hoja_nombre = partes[0].strip("'")
+                    sheet_range_puro = partes[1]
+                else:
+                    hoja_nombre = None
+                    sheet_range_puro = sheet_range
+            else:
+                sheet_range_puro = sheet_range
+                
+            if hoja_nombre:
+                sheet = spreadsheet.worksheet(hoja_nombre)
+            else:
+                sheet = spreadsheet.sheet1
+                
+            rows = sheet.get(sheet_range_puro)
+            is_duplicate = check_if_pedido_exists(sheet, sheet_range_puro, pedido)
+            
+            if is_duplicate:
+                await interaction.response.send_message(f'❌ El número de pedido **{pedido}** ya se encuentra registrado en la hoja de Nota de Crédito.', ephemeral=True)
+                return
+                
+            tz = pytz.timezone('America/Argentina/Buenos_Aires')
+            now = datetime.now(tz)
+            fecha_hora = now.strftime('%d-%m-%Y %H:%M:%S')
+            header = rows[0] if rows else []
+            
+            # Normalizar nombres de columnas
+            def normaliza_columna(nombre):
+                if not nombre:
+                    return ''
+                return str(nombre).strip().replace('\u200b', '').replace('\ufeff', '').lower()
+            
+            # Buscar índices de columnas por nombre
+            pedido_col = next((i for i, h in enumerate(header) if normaliza_columna(h) == 'número de pedido'), 0)
+            asesor_col = next((i for i, h in enumerate(header) if normaliza_columna(h) == 'asesor que carga'), 1)
+            fecha_col = next((i for i, h in enumerate(header) if normaliza_columna(h) == 'fecha/hora'), 2)
+            caso_col = next((i for i, h in enumerate(header) if normaliza_columna(h) == 'caso'), 3)
+            email_col = next((i for i, h in enumerate(header) if normaliza_columna(h) == 'email'), 4)
+            obs_col = next((i for i, h in enumerate(header) if normaliza_columna(h) == 'observaciones'), 5)
+            check_col = next((i for i, h in enumerate(header) if normaliza_columna(h) == 'check bo carga'), 6)
+            
+            # Crear fila con datos en las posiciones correctas
+            row_data = [''] * len(header)
+            row_data[pedido_col] = pedido
+            row_data[asesor_col] = str(interaction.user)
+            row_data[fecha_col] = fecha_hora
+            row_data[caso_col] = f'#{caso}'
+            row_data[email_col] = email
+            row_data[obs_col] = observaciones
+            row_data[check_col] = ''  # Se llenará cuando se confirme
+            
+            sheet.append_row(row_data)
+            
+            # Crear embed de confirmación
+            embed = discord.Embed(
+                title='✅ Nota de Crédito Registrada Exitosamente',
+                description=f'Se ha registrado la solicitud de Nota de Crédito en el sistema.',
+                color=discord.Color.green(),
+                timestamp=datetime.now()
+            )
+            
+            embed.add_field(name='📦 Número de Pedido', value=pedido, inline=True)
+            embed.add_field(name='📝 Número de Caso', value=f'#{caso}', inline=True)
+            embed.add_field(name='📧 Email', value=email, inline=True)
+            embed.add_field(name='👤 Asesor', value=interaction.user.mention, inline=True)
+            embed.add_field(name='📅 Fecha y Hora', value=fecha_hora, inline=True)
+            
+            if observaciones:
+                embed.add_field(name='📋 Observaciones', value=observaciones, inline=False)
+            
+            embed.set_footer(text=f'Solicitud ID: {solicitud_id}')
+            
+            # Crear vista con botón de confirmación
+            from events.attachment_handler import NotaCreditoCargadaView
+            view = NotaCreditoCargadaView(pedido, f'#{caso}', interaction.user.display_name, fecha_hora, str(interaction.message.id) if hasattr(interaction, 'message') else '0')
+            
+            # Enviar el embed mencionando al rol configurado
+            bo_role_id = getattr(config, 'SETUP_BO_ROL', None)
+            if bo_role_id:
+                await interaction.channel.send(
+                    content=f'<@&{bo_role_id}> Nueva solicitud de Nota de Crédito cargada',
+                    embed=embed,
+                    view=view
+                )
+            else:
+                await interaction.channel.send(
+                    content='Nueva solicitud de Nota de Crédito cargada',
+                    embed=embed,
+                    view=view
+                )
+            
+            await interaction.response.send_message('✅ **Solicitud de Nota de Crédito registrada correctamente en Google Sheets.**', ephemeral=True)
+            
+        except Exception as error:
+            print(f'Error en NotaCreditoModal: {error}')
+            await interaction.response.send_message(f'❌ Hubo un error al procesar tu solicitud. Detalles: {error}', ephemeral=True)
 
 async def setup(bot):
     await bot.add_cog(Modals(bot)) 

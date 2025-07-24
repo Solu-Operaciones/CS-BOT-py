@@ -110,6 +110,29 @@ class InteractionCommands(commands.Cog):
                 'Hubo un error al abrir el formulario de solicitud de Factura B. Por favor, inténtalo de nuevo.', ephemeral=True)
 
     @maybe_guild_decorator()
+    @app_commands.command(name="nota-credito", description="Solicita el registro de Nota de Crédito")
+    async def nota_credito(self, interaction: discord.Interaction):
+        target_cat = get_target_category_id()
+        if target_cat and getattr(interaction.channel, 'category_id', None) != target_cat:
+            await interaction.response.send_message(
+                f"Este comando solo puede ser usado en la categoría <#{target_cat}>.", ephemeral=True)
+            return
+        # Restricción de canal
+        if hasattr(config, 'TARGET_CHANNEL_ID_NC') and str(interaction.channel_id) != str(config.TARGET_CHANNEL_ID_NC):
+            await interaction.response.send_message(
+                f"Este comando solo puede ser usado en el canal <#{config.TARGET_CHANNEL_ID_NC}>.", ephemeral=True)
+            return
+        try:
+            from interactions.modals import NotaCreditoModal
+            modal = NotaCreditoModal()
+            await interaction.response.send_modal(modal)
+            print('Modal de Nota de Crédito mostrado al usuario.')
+        except Exception as error:
+            print('Error al mostrar el modal de Nota de Crédito:', error)
+            await interaction.response.send_message(
+                'Hubo un error al abrir el formulario de solicitud de Nota de Crédito. Por favor, inténtalo de nuevo.', ephemeral=True)
+
+    @maybe_guild_decorator()
     @app_commands.command(name="tracking", description="Consulta el estado de un envío de Andreani")
     @app_commands.describe(numero="Número de seguimiento de Andreani")
     async def tracking(self, interaction: discord.Interaction, numero: str):
