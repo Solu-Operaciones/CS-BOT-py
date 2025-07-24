@@ -457,7 +457,7 @@ class NotaCreditoCargadaButton(discord.ui.Button):
                     
                     # Actualizar la celda específica
                     cell_address = f'{chr(65 + check_bo_col)}{i}'  # Convertir índice a letra de columna
-                    sheet.update(cell_address, fecha_hora_confirmacion)
+                    sheet.update(cell_address,  [[fecha_hora_confirmacion]])
                     break
             
             if not pedido_found:
