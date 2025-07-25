@@ -30,7 +30,8 @@ class LoggingCommands(commands.Cog):
             app_commands.Choice(name="test", value="test"),
             app_commands.Choice(name="clear", value="clear"),
             app_commands.Choice(name="resync", value="resync"),
-            app_commands.Choice(name="list_commands", value="list_commands")
+            app_commands.Choice(name="list_commands", value="list_commands"),
+            app_commands.Choice(name="rate_limit_config", value="rate_limit_config")
         ],
         level=[
             app_commands.Choice(name="DEBUG", value="DEBUG"),
@@ -64,6 +65,8 @@ class LoggingCommands(commands.Cog):
                 await self.resync_commands(interaction)
             elif action == "list_commands":
                 await self.list_commands(interaction)
+            elif action == "rate_limit_config":
+                await self.show_rate_limit_config(interaction)
             else:
                 await interaction.response.send_message("❌ Acción no válida.", ephemeral=True)
                 
@@ -287,6 +290,62 @@ class LoggingCommands(commands.Cog):
             
         except Exception as e:
             await interaction.followup.send(f"❌ Error al limpiar el canal: {e}", ephemeral=True)
+
+    async def show_rate_limit_config(self, interaction: discord.Interaction):
+        """Mostrar la configuración actual de rate limiting"""
+        try:
+            # Importar configuración
+            from utils.logging_config import get_rate_limit_config
+            
+            config = get_rate_limit_config()
+            
+            embed = discord.Embed(
+                title="⚙️ Configuración de Rate Limiting",
+                description="Configuración actual del sistema de rate limiting para evitar errores 429",
+                color=0x0099FF,
+                timestamp=discord.utils.utcnow()
+            )
+            
+            # Delays
+            embed.add_field(
+                name="⏱️ Delays",
+                value=f"• **Base:** {config['base_delay']}s\n"
+                      f"• **Máximo:** {config['max_delay']}s\n"
+                      f"• **Consola:** {config['console_buffer_delay']}s",
+                inline=True
+            )
+            
+            # Retry
+            embed.add_field(
+                name="🔄 Retry",
+                value=f"• **Máximo intentos:** {config['max_retries']}\n"
+                      f"• **Delay inicial:** {config['retry_delay']}s\n"
+                      f"• **Delay máximo:** {config['max_retry_delay']}s",
+                inline=True
+            )
+            
+            # Errores consecutivos
+            embed.add_field(
+                name="⚠️ Errores Consecutivos",
+                value=f"• **Máximo:** {config['max_consecutive_errors']}\n"
+                      f"• **Timeout mensajes:** {config['message_timeout']}s",
+                inline=True
+            )
+            
+            # Prioridades
+            priorities_text = "\n".join([f"• **{level}:** {priority}" for level, priority in config['priorities'].items()])
+            embed.add_field(
+                name="📊 Prioridades",
+                value=priorities_text,
+                inline=False
+            )
+            
+            embed.set_footer(text="Sistema de Logging - CS-BOT")
+            
+            await interaction.response.send_message(embed=embed, ephemeral=True)
+            
+        except Exception as e:
+            await interaction.response.send_message(f"❌ Error al obtener configuración: {e}", ephemeral=True)
 
     async def resync_commands(self, interaction: discord.Interaction):
         """Resincronizar todos los comandos del bot"""
