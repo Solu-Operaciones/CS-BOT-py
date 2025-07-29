@@ -67,8 +67,12 @@ async def on_ready():
     # Iniciar la verificación periódica de errores en la hoja
     if (config.SPREADSHEET_ID_BUSCAR_CASO and config.SHEET_RANGE_CASOS_READ and 
         config.TARGET_CHANNEL_ID_CASOS and config.GUILD_ID):
-        print(f"Iniciando verificación periódica de errores cada {config.ERROR_CHECK_INTERVAL_MIN} minutos en la hoja de búsqueda.")
-        check_errors.start()
+        # Verificar si la tarea ya está ejecutándose antes de iniciarla
+        if not check_errors.is_running():
+            print(f"Iniciando verificación periódica de errores cada {config.ERROR_CHECK_INTERVAL_MIN} minutos en la hoja de búsqueda.")
+            check_errors.start()
+        else:
+            print("La verificación periódica de errores ya está ejecutándose.")
     else:
         print("La verificación periódica de errores en la hoja de búsqueda no se iniciará debido a la falta de configuración.")
 
@@ -157,6 +161,17 @@ async def on_command_error(ctx, error):
         log_exception(bot, error, f"Comando: {ctx.command}")
     except:
         pass
+
+@bot.event
+async def on_disconnect():
+    """Manejador cuando el bot se desconecta"""
+    print("Bot desconectado. Deteniendo tareas...")
+    try:
+        if check_errors.is_running():
+            check_errors.cancel()
+            print("Tarea check_errors detenida.")
+    except Exception as e:
+        print(f"Error al detener tareas: {e}")
 
 # Cargar eventos y comandos
 async def load_extensions():
