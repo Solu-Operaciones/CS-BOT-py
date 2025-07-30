@@ -1,5 +1,15 @@
 import discord
+import config
+import pytz
+import asyncio
+import re
 from discord.ext import commands
+from datetime import datetime
+from utils.google_sheets import check_if_pedido_exists
+from utils.google_sheets import initialize_google_sheets, check_if_pedido_exists
+from utils.google_client_manager import get_sheets_client
+from utils.state_manager import generar_solicitud_id, cleanup_expired_states, get_user_state
+import utils.state_manager as state_manager
 
 class FacturaAModal(discord.ui.Modal, title='Registrar Solicitud Factura A'):
     def __init__(self):
@@ -44,9 +54,6 @@ class FacturaAModal(discord.ui.Modal, title='Registrar Solicitud Factura A'):
         self.add_item(self.descripcion)
 
     async def on_submit(self, interaction: discord.Interaction):
-        import config
-        import utils.state_manager as state_manager
-        from utils.state_manager import generar_solicitud_id, cleanup_expired_states
         cleanup_expired_states()
         try:
             user_id = str(interaction.user.id)
@@ -64,10 +71,7 @@ class FacturaAModal(discord.ui.Modal, title='Registrar Solicitud Factura A'):
             if not config.SPREADSHEET_ID_FAC_A:
                 await interaction.response.send_message('❌ Error: El ID de la hoja de Factura A no está configurado.', ephemeral=True)
                 return
-            from utils.google_sheets import check_if_pedido_exists
-            from utils.google_client_manager import get_sheets_client
-            from datetime import datetime
-            import pytz
+            
             client = get_sheets_client()
             spreadsheet = client.open_by_key(config.SPREADSHEET_ID_FAC_A)
             sheet_range = getattr(config, 'SHEET_RANGE_FAC_A', 'A:E')
@@ -162,9 +166,6 @@ class FacturaBModal(discord.ui.Modal, title='Registrar Solicitud Factura B'):
         self.add_item(self.email)
 
     async def on_submit(self, interaction: discord.Interaction):
-        import config
-        import utils.state_manager as state_manager
-        from utils.state_manager import generar_solicitud_id, cleanup_expired_states, get_user_state
         cleanup_expired_states()
         try:
             user_id = str(interaction.user.id)
@@ -190,11 +191,7 @@ class FacturaBModal(discord.ui.Modal, title='Registrar Solicitud Factura B'):
             if not config.SPREADSHEET_ID_FAC_A:
                 await interaction.response.send_message('❌ Error: El ID de la hoja de Factura B no está configurado.', ephemeral=True)
                 return
-                
-            from utils.google_sheets import initialize_google_sheets, check_if_pedido_exists
-            from utils.google_client_manager import get_sheets_client
-            from datetime import datetime
-            import pytz
+            
             client = get_sheets_client()
             spreadsheet = client.open_by_key(config.SPREADSHEET_ID_FAC_A)
             sheet_range = getattr(config, 'SHEET_RANGE_FAC_B', 'FacB!A:G')
@@ -330,9 +327,6 @@ class CasoModal(discord.ui.Modal, title='Detalles del Caso'):
         self.add_item(self.datos_contacto)
 
     async def on_submit(self, interaction: discord.Interaction):
-        import config
-        import utils.state_manager as state_manager
-        from utils.state_manager import generar_solicitud_id, cleanup_expired_states
         cleanup_expired_states()
         try:
             user_id = str(interaction.user.id)
@@ -347,16 +341,14 @@ class CasoModal(discord.ui.Modal, title='Detalles del Caso'):
             datos_contacto = self.datos_contacto.value.strip()
             tipo_solicitud = pending_data.get('tipoSolicitud', 'OTROS')
             solicitud_id = pending_data.get('solicitud_id') or generar_solicitud_id(user_id)
+
             # Validar datos requeridos
             if not pedido or not numero_caso or not datos_contacto:
                 await interaction.response.send_message('❌ Error: Todos los campos son requeridos.', ephemeral=True)
                 state_manager.delete_user_state(user_id, "cambios_devoluciones")
                 return
             # Verificar duplicado y guardar en Google Sheets
-            from utils.google_sheets import initialize_google_sheets, check_if_pedido_exists
-            from utils.google_client_manager import get_sheets_client
-            from datetime import datetime
-            import pytz
+            
             if not config.GOOGLE_CREDENTIALS_JSON:
                 await interaction.response.send_message('❌ Error: Las credenciales de Google no están configuradas.', ephemeral=True)
                 state_manager.delete_user_state(user_id, "cambios_devoluciones")
@@ -455,10 +447,7 @@ class TrackingModal(discord.ui.Modal, title='Consulta de Tracking'):
         self.add_item(self.numero)
 
     async def on_submit(self, interaction: discord.Interaction):
-        import config
         from utils.andreani import get_andreani_tracking
-        from datetime import datetime
-        
         try:
             tracking_number = self.numero.value.strip()
             if not tracking_number:
@@ -517,7 +506,6 @@ class TrackingModal(discord.ui.Modal, title='Consulta de Tracking'):
 
 def clean_html(raw_html):
     """Limpia etiquetas HTML de un string"""
-    import re
     clean = re.compile('<.*?>')
     return re.sub(clean, '', raw_html)
 
@@ -536,9 +524,7 @@ class BuscarCasoModal(discord.ui.Modal, title='Búsqueda de Caso'):
         # Agregar los componentes al modal
         self.add_item(self.pedido)
 
-    async def on_submit(self, interaction: discord.Interaction):
-        import config
-        
+    async def on_submit(self, interaction: discord.Interaction):     
         try:
             pedido = self.pedido.value.strip()
             if not pedido or pedido.lower() == 'número de pedido':
@@ -562,12 +548,11 @@ class BuscarCasoModal(discord.ui.Modal, title='Búsqueda de Caso'):
                 return
             
             # Inicializar cliente de Google Sheets
-            from utils.google_sheets import initialize_google_sheets
             client = get_sheets_client()
             spreadsheet = client.open_by_key(config.SPREADSHEET_ID_BUSCAR_CASO)
             found_rows = []
             search_summary = f"Resultados de la búsqueda para el pedido **{pedido}**:\n\n"
-            
+
             for sheet_name in config.SHEETS_TO_SEARCH:
                 try:
                     sheet = spreadsheet.worksheet(sheet_name)
@@ -630,19 +615,13 @@ class CantidadCasosModal(discord.ui.Modal, title='Finalizar Tarea'):
         self.add_item(self.cantidad)
 
     async def on_submit(self, interaction: discord.Interaction):
-        import asyncio
         await interaction.response.send_message("Procesando la finalización de la tarea...", ephemeral=False)
         msg = await interaction.original_response()
         asyncio.create_task(self.procesar_finalizacion(interaction, msg))
 
-    async def procesar_finalizacion(self, interaction, msg):
-        import config
-        from utils.google_client_manager import get_sheets_client
+    async def procesar_finalizacion(self, interaction, msg):      
         from tasks.panel import crear_embed_tarea
         from utils.state_manager import get_user_state, delete_user_state
-        from datetime import datetime
-        import pytz
-        import asyncio
         try:
             # Validar credenciales y sheet id
             if not config.GOOGLE_CREDENTIALS_JSON:
@@ -778,9 +757,6 @@ class SolicitudEnviosModal(discord.ui.Modal, title='Detalles de la Solicitud de 
         self.add_item(self.observaciones)
 
     async def on_submit(self, interaction: discord.Interaction):
-        import config
-        import utils.state_manager as state_manager
-        from utils.state_manager import generar_solicitud_id, cleanup_expired_states
         cleanup_expired_states()
         try:
             user_id = str(interaction.user.id)
@@ -799,10 +775,7 @@ class SolicitudEnviosModal(discord.ui.Modal, title='Detalles de la Solicitud de 
                 await interaction.response.send_message('❌ Error: Todos los campos obligatorios deben estar completos.', ephemeral=True)
                 state_manager.delete_user_state(user_id, "solicitudes_envios")
                 return
-            from utils.google_sheets import initialize_google_sheets, check_if_pedido_exists
-            from utils.google_client_manager import get_sheets_client
-            from datetime import datetime
-            import pytz
+            
             if not config.GOOGLE_CREDENTIALS_JSON:
                 await interaction.response.send_message('❌ Error: Las credenciales de Google no están configuradas.', ephemeral=True)
                 state_manager.delete_user_state(user_id, "solicitudes_envios")
@@ -943,10 +916,6 @@ class ReembolsoModal(discord.ui.Modal, title='Detalles del Reembolso'):
         self.add_item(self.observacion)
 
     async def on_submit(self, interaction: discord.Interaction):
-        import config
-        import utils.state_manager as state_manager
-        from utils.state_manager import generar_solicitud_id, cleanup_expired_states
-        import re
         cleanup_expired_states()
         try:
             user_id = str(interaction.user.id)
@@ -976,10 +945,6 @@ class ReembolsoModal(discord.ui.Modal, title='Detalles del Reembolso'):
                 state_manager.delete_user_state(user_id, "reembolsos")
                 return
             
-            from utils.google_sheets import initialize_google_sheets, check_if_pedido_exists
-            from utils.google_client_manager import get_sheets_client
-            from datetime import datetime
-            import pytz
             if not config.GOOGLE_CREDENTIALS_JSON:
                 await interaction.response.send_message('❌ Error: Las credenciales de Google no están configuradas.', ephemeral=True)
                 state_manager.delete_user_state(user_id, "reembolsos")
@@ -1085,10 +1050,6 @@ class CancelacionModal(discord.ui.Modal, title='Registrar Cancelación'):
         self.add_item(self.observaciones)
 
     async def on_submit(self, interaction: discord.Interaction):
-        import config
-        import utils.state_manager as state_manager
-        from datetime import datetime
-        import pytz
         try:
             user_id = str(interaction.user.id)
             pedido = self.pedido.value.strip()
@@ -1104,9 +1065,7 @@ class CancelacionModal(discord.ui.Modal, title='Registrar Cancelación'):
                 await interaction.response.send_message('❌ Error: El número de pedido y el motivo de cancelación son obligatorios.', ephemeral=True)
                 return
             
-            # Guardar en Google Sheets
-            from utils.google_sheets import initialize_google_sheets
-            from utils.google_client_manager import get_sheets_client
+            # Guardar en Google Sheets          
             if not config.GOOGLE_CREDENTIALS_JSON or not config.SPREADSHEET_ID_CASOS or not config.GOOGLE_SHEET_RANGE_CANCELACIONES:
                 await interaction.response.send_message('❌ Error de configuración para Google Sheets.', ephemeral=True)
                 return
@@ -1213,9 +1172,6 @@ class ReclamosMLModal(discord.ui.Modal, title='Detalles del Reclamo ML'):
         self.add_item(self.observaciones)
 
     async def on_submit(self, interaction: discord.Interaction):
-        import config
-        import utils.state_manager as state_manager
-        from utils.state_manager import generar_solicitud_id, cleanup_expired_states
         cleanup_expired_states()
         try:
             user_id = str(interaction.user.id)
@@ -1233,10 +1189,6 @@ class ReclamosMLModal(discord.ui.Modal, title='Detalles del Reclamo ML'):
                 await interaction.response.send_message('❌ Error: Todos los campos obligatorios deben estar completos.', ephemeral=True)
                 state_manager.delete_user_state(user_id, "reclamos_ml")
                 return
-            from utils.google_sheets import initialize_google_sheets, check_if_pedido_exists
-            from utils.google_client_manager import get_sheets_client
-            from datetime import datetime
-            import pytz
             if not config.GOOGLE_CREDENTIALS_JSON:
                 await interaction.response.send_message('❌ Error: Las credenciales de Google no están configuradas.', ephemeral=True)
                 state_manager.delete_user_state(user_id, "reclamos_ml")
@@ -1357,9 +1309,6 @@ class PiezaFaltanteModal(discord.ui.Modal, title='Registrar Pieza Faltante'):
         self.add_item(self.observaciones)
 
     async def on_submit(self, interaction: discord.Interaction):
-        import config
-        import utils.state_manager as state_manager
-        from utils.state_manager import generar_solicitud_id, cleanup_expired_states
         cleanup_expired_states()
         try:
             user_id = str(interaction.user.id)
@@ -1372,10 +1321,6 @@ class PiezaFaltanteModal(discord.ui.Modal, title='Registrar Pieza Faltante'):
             if not pedido or not id_wise or not pieza or not sku:
                 await interaction.response.send_message('❌ Error: Todos los campos obligatorios deben estar completos.', ephemeral=True)
                 return
-            from utils.google_sheets import initialize_google_sheets, check_if_pedido_exists
-            from utils.google_client_manager import get_sheets_client
-            from datetime import datetime
-            import pytz
             if not config.GOOGLE_CREDENTIALS_JSON:
                 await interaction.response.send_message('❌ Error: Las credenciales de Google no están configuradas.', ephemeral=True)
                 return
@@ -1527,9 +1472,6 @@ class ICBCModal(discord.ui.Modal, title='Registrar Solicitud ICBC'):
         self.add_item(self.observaciones)
 
     async def on_submit(self, interaction: discord.Interaction):
-        import config
-        import utils.state_manager as state_manager
-        from utils.state_manager import generar_solicitud_id, cleanup_expired_states
         cleanup_expired_states()
         try:
             user_id = str(interaction.user.id)
@@ -1549,12 +1491,7 @@ class ICBCModal(discord.ui.Modal, title='Registrar Solicitud ICBC'):
             if not config.SPREADSHEET_ID_ICBC:
                 await interaction.response.send_message('❌ Error: El ID de la hoja de ICBC no está configurado.', ephemeral=True)
                 return
-            
-            from utils.google_sheets import check_if_pedido_exists
-            from utils.google_client_manager import get_sheets_client
-            from datetime import datetime
-            import pytz
-            
+                        
             client = get_sheets_client()
             spreadsheet = client.open_by_key(config.SPREADSHEET_ID_ICBC)
             sheet_range = getattr(config, 'GOOGLE_SHEET_RANGE_ICBC', 'ICBC!A:F')
@@ -1696,9 +1633,8 @@ class NotaCreditoModal(discord.ui.Modal, title='Registrar Nota de Crédito'):
         self.add_item(self.observaciones)
 
     async def on_submit(self, interaction: discord.Interaction):
-        import config
-        import utils.state_manager as state_manager
-        from utils.state_manager import generar_solicitud_id, cleanup_expired_states
+        
+        
         cleanup_expired_states()
         try:
             user_id = str(interaction.user.id)
@@ -1720,11 +1656,6 @@ class NotaCreditoModal(discord.ui.Modal, title='Registrar Nota de Crédito'):
                 await interaction.response.send_message('❌ Error: El ID de la hoja no está configurado.', ephemeral=True)
                 return
                 
-            from utils.google_sheets import check_if_pedido_exists
-            from utils.google_client_manager import get_sheets_client
-            from datetime import datetime
-            import pytz
-            
             client = get_sheets_client()
             spreadsheet = client.open_by_key(config.SPREADSHEET_ID_FAC_A)
             sheet_range = getattr(config, 'SHEET_RANGE_NC', 'NC!A:G')
